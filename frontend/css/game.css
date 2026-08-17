@@ -1,0 +1,152 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    user-select: none;
+}
+
+html,
+body {
+    width: 100%;
+    height: 100%;
+}
+
+body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    font-family: 'Georgia', serif;
+    background-image: url('../images/design/Background.jpg');
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-position: center;
+    background-attachment: fixed;
+}
+
+/* --- MÀN HÌNH CHÍNH (START SCREEN) --- */
+.start-screen, .screen {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    background-image: url('../images/design/Background.jpg');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 40px 40px 40px;
+}
+
+/* --- LAYER TỐI ĐỂ NỘI DUNG DỄ NHÌN --- */
+.game-screen {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    padding: 24px 40px 40px 40px;
+    background: linear-gradient(180deg,
+        rgba(10, 14, 28, 0.6),
+        rgba(10, 14, 28, 0.15) 50%,
+        rgba(10, 14, 28, 0.7));
+}
+
+/* --- TIÊU ĐỀ GAME --- */
+.game-title {
+    position: absolute;
+    top: 14%;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: clamp(2.6rem, 7vw, 5.5rem);
+    font-weight: bold;
+    letter-spacing: 10px;
+    text-transform: uppercase;
+    color: #ffd700;
+    text-shadow:
+        0 0 20px rgba(255, 215, 0, 0.65),
+        0 0 60px rgba(255, 180, 0, 0.35),
+        0 5px 12px rgba(0, 0, 0, 0.9);
+    white-space: nowrap;
+}
+
+/* --- THẺ HIỂN THỊ COIN/MONEY --- */
+.CoinCard {
+    align-self: flex-end;
+    min-width: 96px;
+    padding: 8px 18px;
+    background: linear-gradient(180deg, rgba(30, 22, 8, 0.95), rgba(10, 8, 4, 0.95));
+    border: 2px solid #f1c40f;
+    border-radius: 14px;
+    color: #ffd700;
+    font-weight: bold;
+    font-size: 1.15rem;
+    text-align: center;
+    box-shadow:
+        0 0 14px rgba(241, 196, 15, 0.35),
+        inset 0 0 10px rgba(0, 0, 0, 0.6);
+}
+
+/* --- HÀNG NÚT BẤM DƯỚI ĐÁY MÀN HÌNH --- */
+.btn-group {
+    width: 100%;
+    max-width: 1200px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 20px;
+    margin-bottom: 10px;
+}
+
+/* --- NÚT BẤM PHONG CÁCH HEARTHSTONE --- */
+.btn-wood {
+    position: relative;
+    min-width: 230px;
+    padding: 14px 34px;
+    font-family: inherit;
+    font-size: 1.35rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: #ffd700;
+    background: linear-gradient(180deg, #4a154b 0%, #2b082c 100%);
+    border: 3px solid #f1c40f;
+    border-radius: 30px;
+    cursor: pointer;
+    box-shadow:
+        0 0 15px rgba(0, 0, 0, 0.9),
+        inset 0 0 10px rgba(241, 196, 15, 0.5),
+        0 4px 8px rgba(0, 0, 0, 0.8);
+    transition: all 0.2s ease-in-out;
+    text-shadow: 1px 2px 4px rgba(0, 0, 0, 0.9);
+}
+
+.btn-wood:hover {
+    transform: scale(1.06);
+    color: #ffffff;
+    border-color: #ffffff;
+    box-shadow:
+        0 0 25px rgba(241, 196, 15, 0.9),
+        inset 0 0 15px rgba(255, 255, 255, 0.8),
+        0 6px 12px rgba(0, 0, 0, 0.9);
+}
+
+.btn-wood:active {
+    transform: scale(0.96);
+}
+
+/* --- RESPONSIVE --- */
+@media (max-width: 700px) {
+    .btn-group {
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .btn-wood {
+        min-width: 200px;
+        width: 70%;
+    }
+}
