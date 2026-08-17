@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Game CoinCard</title>
+
+    <link rel="stylesheet" href="css/index.css">
+</head>
+
+<body>
+
+    <div class="game-board">
+
+        <!-- ============================
+             PLAYER 2 - phía trên (xoay 180°)
+             ============================ -->
+        <div class="player-area player-2">
+
+            <div class="player-board">
+                <div class="card battle-card"><div class="card-image"></div></div>
+                <div class="card battle-card"><div class="card-image"></div></div>
+                <div class="card battle-card"><div class="card-image"></div></div>
+                <div class="card battle-card"><div class="card-image"></div></div>
+                <div class="card battle-card"><div class="card-image"></div></div>
+            </div>
+
+            <div class="player-info">
+
+                <div class="mana-display">
+                    <span class="mana-current">10</span>
+                    <span class="mana-max">/10</span>
+                </div>
+
+                <div class="hero">
+                    <div class="hero-image"></div>
+                    <div class="hp-display">
+                        <span class="health-current">30</span>
+                        <span class="health-max">/30</span>
+                    </div>
+                </div>
+
+                <div class="player-name">PLAYER 2</div>
+
+            </div>
+
+            <div class="player-hand">
+                <div class="card hand-card card-back"></div>
+                <div class="card hand-card card-back"></div>
+                <div class="card hand-card card-back"></div>
+                <div class="card hand-card card-back"></div>
+                <div class="card hand-card card-back"></div>
+            </div>
+
+        </div>
+
+
+        <!-- ============================
+             PLAYER 1 - phía dưới (không xoay)
+             ============================ -->
+        <div class="player-area player-1">
+
+            <div class="player-board">
+                <div class="card battle-card"><div class="card-image"></div></div>
+                <div class="card battle-card"><div class="card-image"></div></div>
+                <div class="card battle-card"><div class="card-image"></div></div>
+                <div class="card battle-card"><div class="card-image"></div></div>
+                <div class="card battle-card"><div class="card-image"></div></div>
+            </div>
+
+            <div class="player-info">
+
+                <div class="mana-display">
+                    <span class="mana-current">10</span>
+                    <span class="mana-max">/10</span>
+                </div>
+
+                <div class="hero">
+                    <div class="hero-image"></div>
+                    <div class="hp-display">
+                        <span class="health-current">30</span>
+                        <span class="health-max">/30</span>
+                    </div>
+                </div>
+
+                <div class="player-name">PLAYER 1</div>
+
+            </div>
+
+            <div class="player-hand">
+                <div class="card hand-card card-back"></div>
+                <div class="card hand-card card-back"></div>
+                <div class="card hand-card card-back"></div>
+                <div class="card hand-card card-back"></div>
+                <div class="card hand-card card-back"></div>
+            </div>
+
+        </div>
+
+
+        <!-- ============================
+             END TURN BUTTON
+             ============================ -->
+        <button class="end-turn-button" type="button">END TURN</button>
+
+    </div>
+
+
+    <script src="js/game.js"></script>
+
+</body>
+</html>

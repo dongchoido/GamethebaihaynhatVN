@@ -1,0 +1,439 @@
+/* =========================
+   RESET
+   ========================= */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html,
+body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+body {
+    font-family: "Palatino Linotype", "Book Antiqua", Georgia, serif;
+    color: #f5e9c8;
+}
+
+
+/* =========================
+   ROOT VARIABLES
+   ========================= */
+
+:root {
+    --card-width: clamp(80px, 10vw, 160px);
+    --card-height: clamp(115px, 16vh, 220px);
+    --card-gap: clamp(4px, 0.8vw, 12px);
+    --board-padding: clamp(4px, 1vh, 14px);
+    --hand-overlap: 0.62;
+    --hand-lift: -18px;
+
+    --gold: #d4af37;
+    --gold-light: #ffe9a0;
+    --blue: #2a5db0;
+}
+
+
+/* =========================
+   GAME BOARD
+   ========================= */
+
+.game-board {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+
+    display: flex;
+    flex-direction: column;
+
+    overflow: hidden;
+
+    background-color: #0d1526;
+    /* chèn ảnh nền board sau */
+    background-image: url("../images/design/Background.jpg");
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+
+/* =========================
+   PLAYER AREA
+   ========================= */
+
+.player-area {
+    flex: 1 1 0;
+    min-height: 0;
+
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+
+    gap: clamp(2px, 0.6vh, 8px);
+    padding: var(--board-padding);
+
+    background: linear-gradient(180deg, rgba(13, 21, 38, 0.35), rgba(13, 21, 38, 0.75));
+}
+
+.player-1 {
+    transform: rotate(0deg);
+}
+
+.player-2 {
+    transform: rotate(180deg);
+}
+
+
+/* =========================
+   PLAYER BOARD
+   ========================= */
+
+.player-board {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+
+    gap: var(--card-gap);
+
+    width: 100%;
+    min-height: calc(var(--card-height) * 1.15);
+    padding: 4px 0;
+}
+
+
+/* =========================
+   PLAYER INFO
+   ========================= */
+
+.player-info {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    gap: clamp(8px, 2vw, 22px);
+}
+
+
+/* =========================
+   HERO
+   ========================= */
+
+.hero {
+    position: relative;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.hero-image {
+    width: clamp(80px, 11vh, 150px);
+    height: clamp(80px, 11vh, 150px);
+
+    border: 3px solid var(--gold);
+    border-radius: 50%;
+
+    /* chèn ảnh hero sau */
+    background-image: url("../images/Heros/Anduin-Wrynn.png");
+    background-size: cover;
+    background-position: center;
+
+    box-shadow: 0 0 18px rgba(212, 175, 55, 0.4), inset 0 0 16px rgba(0, 0, 0, 0.6);
+
+    animation: hero-glow 4s ease-in-out infinite;
+}
+
+.player-2 .hero-image {
+    border-color: #7fb3ff;
+    box-shadow: 0 0 18px rgba(127, 179, 255, 0.4), inset 0 0 16px rgba(0, 0, 0, 0.6);
+    animation-name: hero-glow-blue;
+}
+
+
+/* =========================
+   HP DISPLAY
+   ========================= */
+
+.hp-display {
+    position: absolute;
+    right: -12%;
+    bottom: 4px;
+
+    display: flex;
+    align-items: baseline;
+
+    gap: 2px;
+    padding: 2px 12px;
+
+    border: 2px solid #ffd9a0;
+    border-radius: 20px;
+
+    background: radial-gradient(circle at 30% 30%, #ff6b5e, #7a1410 72%);
+
+    color: #fff;
+    font-weight: bold;
+    font-size: clamp(12px, 1.4vw, 18px);
+    text-shadow: 0 1px 2px #000;
+
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6), 0 0 12px rgba(255, 107, 94, 0.4);
+}
+
+.health-max {
+    font-size: 0.75em;
+    opacity: 0.85;
+}
+
+
+/* =========================
+   MANA DISPLAY
+   ========================= */
+
+.mana-display {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+
+    width: clamp(42px, 4.8vh, 70px);
+    height: clamp(42px, 4.8vh, 70px);
+
+    border: 2px solid #bfe9ff;
+    border-radius: 50%;
+
+    background: radial-gradient(circle at 35% 30%, #7fd4ff, #1c5aa8 76%);
+
+    color: #fff;
+    font-weight: bold;
+    font-size: clamp(13px, 1.5vw, 20px);
+    text-shadow: 0 1px 3px #000;
+
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.6), 0 0 14px rgba(127, 212, 255, 0.45);
+
+    animation: mana-glow 3s ease-in-out infinite;
+}
+
+.mana-max {
+    font-size: 0.7em;
+    opacity: 0.85;
+}
+
+
+/* =========================
+   PLAYER NAME
+   ========================= */
+
+.player-name {
+    font-size: clamp(11px, 1.2vw, 16px);
+    letter-spacing: 3px;
+
+    color: var(--gold-light);
+    text-shadow: 0 0 8px rgba(212, 175, 55, 0.6), 0 2px 3px #000;
+}
+
+
+/* =========================
+   CARD BASE
+   ========================= */
+
+.card {
+    position: relative;
+
+    width: var(--card-width);
+    height: var(--card-height);
+
+    flex-shrink: 0;
+
+    border: 2px solid var(--gold);
+    border-radius: clamp(6px, 0.8vw, 12px);
+
+    overflow: hidden;
+
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.55);
+
+    transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+
+    will-change: transform;
+}
+
+.card-image {
+    position: absolute;
+    inset: 0;
+
+    /* chèn ảnh card sau */
+    background-size: cover;
+    background-position: center;
+
+    background: linear-gradient(160deg, #3c4a63, #1a2333);
+}
+
+
+/* =========================
+   BATTLE CARD
+   ========================= */
+
+.battle-card {
+    z-index: 1;
+}
+
+.battle-card:hover {
+    transform: translateY(-8px) scale(1.05);
+
+    z-index: 40;
+
+    border-color: var(--gold-light);
+
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.65), 0 0 18px rgba(212, 175, 55, 0.5);
+}
+
+
+/* =========================
+   CARD BACK
+   ========================= */
+
+.card-back {
+    border-color: #8a6a2f;
+
+    background:
+        repeating-linear-gradient(45deg, rgba(0, 0, 0, 0.35) 0 8px, rgba(255, 255, 255, 0.06) 8px 16px),
+        radial-gradient(circle at 50% 45%, #7a4a1e, #3a220c 72%);
+}
+
+
+/* =========================
+   PLAYER HAND
+   ========================= */
+
+.player-hand {
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+
+    height: calc(var(--card-height) * 1.3);
+    padding-top: 10px;
+}
+
+.hand-card {
+    z-index: 1;
+    margin-left: calc(var(--card-width) * (var(--hand-overlap) - 1) * -1);
+}
+
+.hand-card:first-child {
+    margin-left: 0;
+}
+
+.hand-card:nth-child(1) { transform: rotate(-7deg)  translateY(6px); }
+.hand-card:nth-child(2) { transform: rotate(-3.5deg) translateY(3px); }
+.hand-card:nth-child(3) { transform: rotate(0deg)   translateY(0px); z-index: 5; }
+.hand-card:nth-child(4) { transform: rotate(3.5deg)  translateY(3px); }
+.hand-card:nth-child(5) { transform: rotate(7deg)   translateY(6px); }
+
+.hand-card:hover {
+    transform: translateY(var(--hand-lift)) scale(1.06);
+
+    z-index: 60;
+
+    border-color: var(--gold-light);
+
+    box-shadow: 0 14px 28px rgba(0, 0, 0, 0.7), 0 0 20px rgba(212, 175, 55, 0.55);
+}
+
+
+/* =========================
+   END TURN BUTTON
+   ========================= */
+
+.end-turn-button {
+    position: absolute;
+    right: clamp(8px, 2vw, 28px);
+    top: 50%;
+    transform: translateY(-50%);
+
+    padding: 14px 18px;
+
+    border: 2px solid #ffeaa0;
+    border-radius: 10px;
+
+    background: linear-gradient(180deg, #ffe9a0, #d4af37 45%, #9c7c1f);
+
+    color: #2a1c06;
+    font-family: inherit;
+    font-weight: bold;
+    font-size: clamp(14px, 1.6vw, 22px);
+    letter-spacing: 2px;
+
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+
+    cursor: pointer;
+
+    transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+}
+
+.end-turn-button:hover {
+    filter: brightness(1.12);
+
+    box-shadow: 0 6px 20px rgba(212, 175, 55, 0.55), 0 0 16px rgba(212, 175, 55, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+
+    transform: translateY(-50%) scale(1.05);
+}
+
+.end-turn-button:active {
+    transform: translateY(-50%) scale(0.96);
+}
+
+
+/* =========================
+   ANIMATION
+   ========================= */
+
+@keyframes hero-glow {
+    0%, 100% { box-shadow: 0 0 16px rgba(212, 175, 55, 0.35), inset 0 0 16px rgba(0, 0, 0, 0.6); }
+    50%      { box-shadow: 0 0 28px rgba(212, 175, 55, 0.65), inset 0 0 16px rgba(0, 0, 0, 0.6); }
+}
+
+@keyframes hero-glow-blue {
+    0%, 100% { box-shadow: 0 0 16px rgba(127, 179, 255, 0.35), inset 0 0 16px rgba(0, 0, 0, 0.6); }
+    50%      { box-shadow: 0 0 28px rgba(127, 179, 255, 0.6), inset 0 0 16px rgba(0, 0, 0, 0.6); }
+}
+
+@keyframes mana-glow {
+    0%, 100% { box-shadow: 0 2px 10px rgba(0, 0, 0, 0.6), 0 0 12px rgba(127, 212, 255, 0.35); }
+    50%      { box-shadow: 0 2px 10px rgba(0, 0, 0, 0.6), 0 0 22px rgba(127, 212, 255, 0.65); }
+}
+
+
+/* =========================
+   RESPONSIVE
+   ========================= */
+
+@media (max-width: 760px) {
+    :root {
+        --hand-overlap: 0.55;
+    }
+}
+
+@media (max-height: 680px) {
+    .player-area {
+        gap: 2px;
+        padding: 2px 0;
+    }
+
+    .player-board {
+        min-height: calc(var(--card-height) * 1.02);
+    }
+
+    .player-hand {
+        height: calc(var(--card-height) * 1.18);
+        padding-top: 4px;
+    }
+
+    .player-name {
+        display: none;
+    }
+}
