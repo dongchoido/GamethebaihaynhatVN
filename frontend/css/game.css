@@ -16,19 +16,19 @@ body {
     height: 100vh;
     overflow: hidden;
     font-family: 'Georgia', serif;
-    background-image: url('../images/design/Background.jpg');
+    background-image: url('../images/design/StartBG.jpg');
     background-size: cover;
     background-repeat: no-repeat;
     background-position: center;
     background-attachment: fixed;
 }
 
-/* --- MÀN HÌNH CHÍNH (START SCREEN) --- */
+/* --- MÀN HÌNH CHÍNH --- */
 .start-screen, .screen {
     width: 100%;
     height: 100%;
     position: relative;
-    background-image: url('../images/design/Background.jpg');
+    background-image: url('../images/design/StartBG.jpg');
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
@@ -46,48 +46,10 @@ body {
     position: relative;
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
+    justify-content: flex-end;
     align-items: center;
     padding: 24px 40px 40px 40px;
-    background: linear-gradient(180deg,
-        rgba(10, 14, 28, 0.6),
-        rgba(10, 14, 28, 0.15) 50%,
-        rgba(10, 14, 28, 0.7));
-}
-
-/* --- TIÊU ĐỀ GAME --- */
-.game-title {
-    position: absolute;
-    top: 14%;
-    left: 50%;
-    transform: translateX(-50%);
-    font-size: clamp(2.6rem, 7vw, 5.5rem);
-    font-weight: bold;
-    letter-spacing: 10px;
-    text-transform: uppercase;
-    color: #ffd700;
-    text-shadow:
-        0 0 20px rgba(255, 215, 0, 0.65),
-        0 0 60px rgba(255, 180, 0, 0.35),
-        0 5px 12px rgba(0, 0, 0, 0.9);
-    white-space: nowrap;
-}
-
-/* --- THẺ HIỂN THỊ COIN/MONEY --- */
-.CoinCard {
-    align-self: flex-end;
-    min-width: 96px;
-    padding: 8px 18px;
-    background: linear-gradient(180deg, rgba(30, 22, 8, 0.95), rgba(10, 8, 4, 0.95));
-    border: 2px solid #f1c40f;
-    border-radius: 14px;
-    color: #ffd700;
-    font-weight: bold;
-    font-size: 1.15rem;
-    text-align: center;
-    box-shadow:
-        0 0 14px rgba(241, 196, 15, 0.35),
-        inset 0 0 10px rgba(0, 0, 0, 0.6);
+    
 }
 
 /* --- HÀNG NÚT BẤM DƯỚI ĐÁY MÀN HÌNH --- */
@@ -95,47 +57,48 @@ body {
     width: 100%;
     max-width: 1200px;
     display: flex;
-    justify-content: space-between;
+    justify-content: center;
     align-items: center;
+    gap: 30px;
     padding: 0 20px;
     margin-bottom: 10px;
 }
 
-/* --- NÚT BẤM PHONG CÁCH HEARTHSTONE --- */
+/* --- NÚT BẤM DÙNG ẢNH --- */
 .btn-wood {
     position: relative;
-    min-width: 230px;
-    padding: 14px 34px;
-    font-family: inherit;
-    font-size: 1.35rem;
-    font-weight: bold;
-    text-transform: uppercase;
-    letter-spacing: 2px;
-    color: #ffd700;
-    background: linear-gradient(180deg, #4a154b 0%, #2b082c 100%);
-    border: 3px solid #f1c40f;
-    border-radius: 30px;
+    width: 240px;
+    height: 88px;
+    min-width: 200px;
+    border: none;
+    outline: none;
+    appearance: none;
+    border-radius: 8px;
+    background-color: transparent;
+    background-size: 100% 100%;
+    background-position: center;
+    background-repeat: no-repeat;
+    font-size: 0;
+    color: transparent;
     cursor: pointer;
-    box-shadow:
-        0 0 15px rgba(0, 0, 0, 0.9),
-        inset 0 0 10px rgba(241, 196, 15, 0.5),
-        0 4px 8px rgba(0, 0, 0, 0.8);
-    transition: all 0.2s ease-in-out;
-    text-shadow: 1px 2px 4px rgba(0, 0, 0, 0.9);
+    transition: transform 0.2s ease, filter 0.2s ease, box-shadow 0.2s ease;
+}
+
+.btn-group .btn-wood:first-child {
+    background-image: url('../images/design/shop.png');
+}
+
+.btn-group .btn-wood:last-child {
+    background-image: url('../images/design/start.png');
 }
 
 .btn-wood:hover {
-    transform: scale(1.06);
-    color: #ffffff;
-    border-color: #ffffff;
-    box-shadow:
-        0 0 25px rgba(241, 196, 15, 0.9),
-        inset 0 0 15px rgba(255, 255, 255, 0.8),
-        0 6px 12px rgba(0, 0, 0, 0.9);
+    transform: scale(1.08);
+    filter: brightness(1.15);
 }
 
 .btn-wood:active {
-    transform: scale(0.96);
+    transform: scale(0.95);
 }
 
 /* --- RESPONSIVE --- */
@@ -147,6 +110,6 @@ body {
 
     .btn-wood {
         min-width: 200px;
-        width: 70%;
+        width: 200px;
     }
 }
