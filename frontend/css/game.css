@@ -1,0 +1,115 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    user-select: none;
+}
+
+html,
+body {
+    width: 100%;
+    height: 100%;
+}
+
+body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    font-family: 'Georgia', serif;
+    background-image: url('../images/design/StartBG.jpg');
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-position: center;
+    background-attachment: fixed;
+}
+
+/* --- MÀN HÌNH CHÍNH --- */
+.start-screen, .screen {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    background-image: url('../images/design/StartBG.jpg');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 40px 40px 40px;
+}
+
+/* --- LAYER TỐI ĐỂ NỘI DUNG DỄ NHÌN --- */
+.game-screen {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: center;
+    padding: 24px 40px 40px 40px;
+    
+}
+
+/* --- HÀNG NÚT BẤM DƯỚI ĐÁY MÀN HÌNH --- */
+.btn-group {
+    width: 100%;
+    max-width: 1200px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 30px;
+    padding: 0 20px;
+    margin-bottom: 10px;
+}
+
+/* --- NÚT BẤM DÙNG ẢNH --- */
+.btn-wood {
+    position: relative;
+    width: 240px;
+    height: 88px;
+    min-width: 200px;
+    border: none;
+    outline: none;
+    appearance: none;
+    border-radius: 8px;
+    background-color: transparent;
+    background-size: 100% 100%;
+    background-position: center;
+    background-repeat: no-repeat;
+    font-size: 0;
+    color: transparent;
+    cursor: pointer;
+    transition: transform 0.2s ease, filter 0.2s ease, box-shadow 0.2s ease;
+}
+
+.btn-group .btn-wood:first-child {
+    background-image: url('../images/design/shop.png');
+}
+
+.btn-group .btn-wood:last-child {
+    background-image: url('../images/design/start.png');
+}
+
+.btn-wood:hover {
+    transform: scale(1.08);
+    filter: brightness(1.15);
+}
+
+.btn-wood:active {
+    transform: scale(0.95);
+}
+
+/* --- RESPONSIVE --- */
+@media (max-width: 700px) {
+    .btn-group {
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .btn-wood {
+        min-width: 200px;
+        width: 200px;
+    }
+}

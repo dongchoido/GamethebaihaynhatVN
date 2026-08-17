@@ -1,0 +1,250 @@
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+
+body {
+    min-height: 100vh;
+
+    background-image: url('../images/design/ShopBackground.jpg');
+    background-repeat: no-repeat;
+    background-size: 100% 100%;
+    font-family: Arial, sans-serif;
+}
+
+
+/* =========================
+   RADIO
+   ========================= */
+
+#mage,
+#monster {
+    display: none;
+}
+
+
+/* =========================
+   TABS
+   ========================= */
+
+.tabs {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: flex-start;
+
+    gap: 100px;
+
+    padding: 122px 0 0 50px;
+}
+
+
+.tabs label {
+    width: 352px;
+    height: 112px;
+
+    border: none;
+    border-radius: 8px;
+
+    background-color: transparent;
+    background-size: 100% 100%;
+    background-position: center;
+    background-repeat: no-repeat;
+
+    font-size: 0;
+    color: transparent;
+
+    cursor: pointer;
+
+    transition: transform 0.2s ease, filter 0.2s ease, box-shadow 0.2s ease;
+}
+
+
+.tabs label:first-child {
+    background-image: url('../images/design/magebutton.png');
+}
+
+
+.tabs label[for="monster"] {
+    background-image: url('../images/design/monsterbutton.png');
+}
+
+
+.tabs label:hover {
+    transform: scale(1.06);
+    filter: brightness(1.15);
+}
+
+
+.tabs .exit-btn {
+    display: block;
+
+    width: 352px;
+    height: 112px;
+
+    border: none;
+    outline: none;
+    border-radius: 8px;
+
+    background-color: transparent;
+    background-image: url('../images/design/EXIT3.png');
+    background-size: 100% 100%;
+    background-position: center;
+    background-repeat: no-repeat;
+
+    font-size: 0;
+    color: transparent;
+
+    cursor: pointer;
+
+    transition: transform 0.2s ease, filter 0.2s ease;
+}
+
+.tabs .exit-btn:hover {
+    transform: scale(1.06);
+    filter: brightness(1.15);
+}
+
+.tabs .exit-btn:active {
+    transform: scale(0.95);
+}
+
+
+/* Active */
+
+#mage:checked ~ .tabs label[for="mage"],
+#monster:checked ~ .tabs label[for="monster"] {
+    transform: scale(1.02);
+}
+
+
+/* =========================
+   CARDS CONTAINER
+   ========================= */
+
+.cards-container {
+position: fixed;
+    right: 100px;
+    top: 140px;
+
+    width: min(100vw, 1050px);
+}
+
+
+/* =========================
+   CARDS
+   ========================= */
+
+.cards {
+    position: relative;
+
+    display: grid;
+
+    grid-template-columns: repeat(auto-fill, 150px);
+
+    gap: 20px;
+
+    padding: 0;
+}
+
+
+.cards img {
+    width: 100%;
+
+    display: block;
+
+    transition:
+        transform 0.3s ease,
+        opacity 0.3s ease;
+}
+
+
+.cards img:hover {
+    transform: translateY(-8px);
+}
+
+
+/* =========================
+   SHOW / HIDE
+   ========================= */
+
+.monster {
+    display: none;
+}
+
+
+#mage:checked ~ .cards-container .mage {
+    display: grid;
+
+    animation: fadeIn 0.3s ease;
+}
+
+
+#monster:checked ~ .cards-container .monster {
+    display: grid;
+
+    animation: fadeIn 0.3s ease;
+}
+
+#monster:checked ~ .cards-container .mage {
+    display: none;
+}
+
+#mage:checked ~ .cards-container .monster {
+    display: none;
+}
+
+
+/* =========================
+   ANIMATION
+   ========================= */
+
+@keyframes fadeIn {
+
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+}
+
+
+/* =========================
+   RESPONSIVE
+   ========================= */
+
+@media (max-width: 1000px) {
+
+    .cards-container {
+        width: min(80vw, 620px);
+    }
+
+    .cards {
+        grid-template-columns:
+            repeat(auto-fill, 144px);
+    }
+
+}
+
+
+@media (max-width: 600px) {
+
+    .cards-container {
+        right: 15px;
+        width: calc(100vw - 30px);
+    }
+
+    .cards {
+        grid-template-columns:
+            repeat(auto-fill, 123px);
+    }
+
+}
