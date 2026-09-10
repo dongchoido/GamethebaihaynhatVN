@@ -1,0 +1,541 @@
+[
+  {
+    "name": "The Lich King",
+    "slug": "the-lich-king",
+    "type": "MINION",
+    "rarity": "LEGENDARY",
+    "manaCost": 8,
+    "attack": 8,
+    "health": 8,
+    "heroClass": "NEUTRAL",
+    "imagePath": "assets/images/Minions/The LichKing.png",
+    "description": "Taunt.",
+    "effects": []
+  },
+  {
+    "name": "Kalecgos",
+    "slug": "kalecgos",
+    "type": "MINION",
+    "rarity": "LEGENDARY",
+    "manaCost": 4,
+    "attack": 4,
+    "health": 12,
+    "heroClass": "MAGE",
+    "imagePath": "assets/images/Minions/Kalycgos.png",
+    "description": "",
+    "effects": []
+  },
+  {
+    "name": "Argent Commander",
+    "slug": "argent-commander",
+    "type": "MINION",
+    "rarity": "RARE",
+    "manaCost": 6,
+    "attack": 4,
+    "health": 2,
+    "heroClass": "NEUTRAL",
+    "imagePath": "assets/images/Minions/Argent Commander.png",
+    "description": "Charge. Divine Shield.",
+    "effects": [],
+    "keywords": [
+      "CHARGE"
+    ]
+  },
+  {
+    "name": "Bloodfen Raptor",
+    "slug": "bloodfen-raptor",
+    "type": "MINION",
+    "rarity": "COMMON",
+    "manaCost": 2,
+    "attack": 3,
+    "health": 2,
+    "heroClass": "NEUTRAL",
+    "imagePath": "assets/images/Minions/Bloodfen Raptor.png",
+    "description": "",
+    "effects": []
+  },
+  {
+    "name": "Boulderfist Ogre",
+    "slug": "boulderfist-ogre",
+    "type": "MINION",
+    "rarity": "COMMON",
+    "manaCost": 6,
+    "attack": 6,
+    "health": 7,
+    "heroClass": "NEUTRAL",
+    "imagePath": "assets/images/Minions/Boulderfist Ogre.png",
+    "description": "",
+    "effects": []
+  },
+  {
+    "name": "Chillwind Yeti",
+    "slug": "chillwind-yeti",
+    "type": "MINION",
+    "rarity": "COMMON",
+    "manaCost": 4,
+    "attack": 4,
+    "health": 5,
+    "heroClass": "NEUTRAL",
+    "imagePath": "assets/images/Minions/Chilwind Yeti.png",
+    "description": "",
+    "effects": []
+  },
+  {
+    "name": "Chromaggus",
+    "slug": "chromaggus",
+    "type": "MINION",
+    "rarity": "LEGENDARY",
+    "manaCost": 8,
+    "attack": 6,
+    "health": 8,
+    "heroClass": "NEUTRAL",
+    "imagePath": "assets/images/Minions/Chromaggus.png",
+    "description": "",
+    "effects": []
+  },
+  {
+    "name": "Colossus of the Moon",
+    "slug": "colossus-of-the-moon",
+    "type": "MINION",
+    "rarity": "LEGENDARY",
+    "manaCost": 9,
+    "attack": 10,
+    "health": 10,
+    "heroClass": "NEUTRAL",
+    "imagePath": "assets/images/Minions/Colossus of the Moon.png",
+    "description": "",
+    "effects": []
+  },
+  {
+    "name": "Core Hound",
+    "slug": "core-hound",
+    "type": "MINION",
+    "rarity": "COMMON",
+    "manaCost": 2,
+    "attack": 2,
+    "health": 1,
+    "heroClass": "HUNTER",
+    "imagePath": "assets/images/Minions/Core Hound.png",
+    "description": "",
+    "effects": []
+  },
+  {
+    "name": "Frostwolf Grunt",
+    "slug": "frostwolf-grunt",
+    "type": "MINION",
+    "rarity": "COMMON",
+    "manaCost": 2,
+    "attack": 2,
+    "health": 2,
+    "heroClass": "NEUTRAL",
+    "imagePath": "assets/images/Minions/Frostwolf Grunt.png",
+    "description": "Taunt.",
+    "effects": []
+  },
+  {
+    "name": "Goldshire Footman",
+    "slug": "goldshire-footman",
+    "type": "MINION",
+    "rarity": "COMMON",
+    "manaCost": 1,
+    "attack": 1,
+    "health": 2,
+    "heroClass": "NEUTRAL",
+    "imagePath": "assets/images/Minions/Goldshire Footman.png",
+    "description": "Taunt.",
+    "effects": []
+  },
+  {
+    "name": "Icehowl",
+    "slug": "icehowl",
+    "type": "MINION",
+    "rarity": "LEGENDARY",
+    "manaCost": 9,
+    "attack": 10,
+    "health": 10,
+    "heroClass": "NEUTRAL",
+    "imagePath": "assets/images/Minions/Icehowl.png",
+    "description": "",
+    "effects": []
+  },
+  {
+    "name": "King Krush",
+    "slug": "king-krush",
+    "type": "MINION",
+    "rarity": "LEGENDARY",
+    "manaCost": 9,
+    "attack": 8,
+    "health": 8,
+    "heroClass": "HUNTER",
+    "imagePath": "assets/images/Minions/King Krush.png",
+    "description": "Charge.",
+    "effects": [],
+    "keywords": [
+      "CHARGE"
+    ]
+  },
+  {
+    "name": "Prophet Velen",
+    "slug": "prophet-velen",
+    "type": "MINION",
+    "rarity": "LEGENDARY",
+    "manaCost": 7,
+    "attack": 7,
+    "health": 7,
+    "heroClass": "PRIEST",
+    "imagePath": "assets/images/Minions/Prophet Velen.png",
+    "description": "",
+    "effects": []
+  },
+  {
+    "name": "Stonetusk Boar",
+    "slug": "stonetusk-boar",
+    "type": "MINION",
+    "rarity": "COMMON",
+    "manaCost": 1,
+    "attack": 1,
+    "health": 1,
+    "heroClass": "NEUTRAL",
+    "imagePath": "assets/images/Minions/Stonetusk Boar.png",
+    "description": "Charge.",
+    "effects": [],
+    "keywords": [
+      "CHARGE"
+    ]
+  },
+  {
+    "name": "Sunwalker",
+    "slug": "sunwalker",
+    "type": "MINION",
+    "rarity": "RARE",
+    "manaCost": 6,
+    "attack": 4,
+    "health": 5,
+    "heroClass": "NEUTRAL",
+    "imagePath": "assets/images/Minions/Sunwalker.png",
+    "description": "Taunt. Divine Shield.",
+    "effects": []
+  },
+  {
+    "name": "Tirion Fordring",
+    "slug": "tirion-fordring",
+    "type": "MINION",
+    "rarity": "LEGENDARY",
+    "manaCost": 8,
+    "attack": 6,
+    "health": 6,
+    "heroClass": "PALADIN",
+    "imagePath": "assets/images/Minions/Tirion Fordring.png",
+    "description": "",
+    "effects": []
+  },
+  {
+    "name": "Wilfred Fizzlebang",
+    "slug": "wilfred-fizzlebang",
+    "type": "MINION",
+    "rarity": "EPIC",
+    "manaCost": 6,
+    "attack": 4,
+    "health": 4,
+    "heroClass": "NEUTRAL",
+    "imagePath": "assets/images/Minions/Wilfred Fizzlebang.png",
+    "description": "",
+    "effects": []
+  },
+  {
+    "name": "Wolfrider",
+    "slug": "wolfrider",
+    "type": "MINION",
+    "rarity": "COMMON",
+    "manaCost": 3,
+    "attack": 3,
+    "health": 1,
+    "heroClass": "NEUTRAL",
+    "imagePath": "assets/images/Minions/Wolfrider.png",
+    "description": "Charge.",
+    "effects": [],
+    "keywords": [
+      "CHARGE"
+    ]
+  },
+  {
+    "name": "Silver Hand Recruit",
+    "slug": "silver-hand-recruit",
+    "type": "MINION",
+    "rarity": "COMMON",
+    "manaCost": 1,
+    "attack": 1,
+    "health": 1,
+    "heroClass": "PALADIN",
+    "imagePath": "assets/images/Minions/Silver Hand Recruit.png",
+    "description": "Hero Power token.",
+    "effects": [],
+    "collectible": false
+  },
+  {
+    "name": "Sheep",
+    "slug": "sheep",
+    "type": "MINION",
+    "rarity": "COMMON",
+    "manaCost": 1,
+    "attack": 1,
+    "health": 1,
+    "heroClass": "MAGE",
+    "imagePath": "assets/images/Minions/Sheep.png",
+    "description": "Polymorph token.",
+    "effects": [],
+    "collectible": false
+  },
+  {
+    "name": "Pyroblast",
+    "slug": "pyroblast",
+    "type": "SPELL",
+    "rarity": "EPIC",
+    "manaCost": 10,
+    "attack": 0,
+    "health": 0,
+    "heroClass": "MAGE",
+    "imagePath": "assets/images/Minions/Pyroblast.png",
+    "description": "Deal 10 damage.",
+    "effects": [
+      {
+        "type": "DAMAGE",
+        "value": 10,
+        "target": "ENEMY_CHARACTER"
+      }
+    ]
+  },
+  {
+    "name": "Flamestrike",
+    "slug": "flamestrike",
+    "type": "SPELL",
+    "rarity": "RARE",
+    "manaCost": 4,
+    "attack": 0,
+    "health": 0,
+    "heroClass": "MAGE",
+    "imagePath": "assets/images/Minions/Flamestrike.png",
+    "description": "Deal 4 damage to all enemy minions.",
+    "effects": [
+      {
+        "type": "AOE_DAMAGE",
+        "value": 4,
+        "target": "ALL_ENEMY_MINIONS"
+      }
+    ]
+  },
+  {
+    "name": "Polymorph",
+    "slug": "polymorph",
+    "type": "SPELL",
+    "rarity": "COMMON",
+    "manaCost": 4,
+    "attack": 0,
+    "health": 0,
+    "heroClass": "MAGE",
+    "imagePath": "assets/images/Minions/Polymorph.png",
+    "description": "Transform a minion into a 1/1 Sheep.",
+    "effects": [
+      {
+        "type": "TRANSFORM",
+        "value": 1,
+        "target": "ANY_MINION"
+      }
+    ]
+  },
+  {
+    "name": "Multi-Shot",
+    "slug": "multi-shot",
+    "type": "SPELL",
+    "rarity": "RARE",
+    "manaCost": 3,
+    "attack": 0,
+    "health": 0,
+    "heroClass": "HUNTER",
+    "imagePath": "assets/images/Minions/Multi-Shot.png",
+    "description": "Deal 3 damage to two random enemies.",
+    "effects": [
+      {
+        "type": "DAMAGE",
+        "value": 3,
+        "target": "RANDOM_ENEMY"
+      }
+    ]
+  },
+  {
+    "name": "Kill Command",
+    "slug": "kill-command",
+    "type": "SPELL",
+    "rarity": "RARE",
+    "manaCost": 3,
+    "attack": 0,
+    "health": 0,
+    "heroClass": "HUNTER",
+    "imagePath": "assets/images/Minions/Kill Command.png",
+    "description": "Deal 3 damage to a character.",
+    "effects": [
+      {
+        "type": "DAMAGE",
+        "value": 3,
+        "target": "ENEMY_CHARACTER"
+      }
+    ]
+  },
+  {
+    "name": "Level Up!",
+    "slug": "level-up",
+    "type": "SPELL",
+    "rarity": "EPIC",
+    "manaCost": 5,
+    "attack": 0,
+    "health": 0,
+    "heroClass": "PALADIN",
+    "imagePath": "assets/images/Minions/Level Up!.png",
+    "description": "Give your minions +1/+0.",
+    "effects": [
+      {
+        "type": "BUFF_ATTACK",
+        "value": 1,
+        "target": "ALL_FRIENDLY_MINIONS"
+      }
+    ]
+  },
+  {
+    "name": "Seal of Champions",
+    "slug": "seal-of-champions",
+    "type": "SPELL",
+    "rarity": "RARE",
+    "manaCost": 3,
+    "attack": 0,
+    "health": 0,
+    "heroClass": "PALADIN",
+    "imagePath": "assets/images/Minions/Seal Of Champions.png",
+    "description": "Give a friendly minion +3/+3.",
+    "effects": [
+      {
+        "type": "BUFF_ATTACK",
+        "value": 3,
+        "target": "FRIENDLY_MINION"
+      }
+    ]
+  },
+  {
+    "name": "Holy Nova",
+    "slug": "holy-nova",
+    "type": "SPELL",
+    "rarity": "COMMON",
+    "manaCost": 5,
+    "attack": 0,
+    "health": 0,
+    "heroClass": "PRIEST",
+    "imagePath": "assets/images/Minions/Holy Nova.png",
+    "description": "Restore 6 Health.",
+    "effects": [
+      {
+        "type": "HEAL",
+        "value": 6,
+        "target": "FRIENDLY_HERO"
+      }
+    ]
+  },
+  {
+    "name": "Shadow Word: Death",
+    "slug": "shadow-word-death",
+    "type": "SPELL",
+    "rarity": "COMMON",
+    "manaCost": 3,
+    "attack": 0,
+    "health": 0,
+    "heroClass": "PRIEST",
+    "imagePath": "assets/images/Minions/Shadow Word Death.png",
+    "description": "Destroy a minion with 5 or more Attack.",
+    "effects": [
+      {
+        "type": "DESTROY",
+        "value": 0,
+        "target": "ANY_MINION"
+      }
+    ]
+  },
+  {
+    "name": "Curse of Weakness",
+    "slug": "curse-of-weakness",
+    "type": "SPELL",
+    "rarity": "COMMON",
+    "manaCost": 2,
+    "attack": 0,
+    "health": 0,
+    "heroClass": "WARLOCK",
+    "imagePath": "assets/images/Minions/Curse of Weakness.png",
+    "description": "Deal 2 damage to a minion.",
+    "effects": [
+      {
+        "type": "DAMAGE",
+        "value": 2,
+        "target": "ANY_MINION"
+      }
+    ]
+  },
+  {
+    "name": "Siphon Soul",
+    "slug": "siphon-soul",
+    "type": "SPELL",
+    "rarity": "RARE",
+    "manaCost": 6,
+    "attack": 0,
+    "health": 0,
+    "heroClass": "WARLOCK",
+    "imagePath": "assets/images/Minions/Siphon Soul.png",
+    "description": "Destroy a minion. Restore 3 Health.",
+    "effects": [
+      {
+        "type": "DESTROY",
+        "value": 0,
+        "target": "ANY_MINION"
+      },
+      {
+        "type": "HEAL",
+        "value": 3,
+        "target": "FRIENDLY_HERO"
+      }
+    ]
+  },
+  {
+    "name": "Twisting Nether",
+    "slug": "twisting-nether",
+    "type": "SPELL",
+    "rarity": "EPIC",
+    "manaCost": 8,
+    "attack": 0,
+    "health": 0,
+    "heroClass": "WARLOCK",
+    "imagePath": "assets/images/Minions/Twisting nether.png",
+    "description": "Destroy all minions.",
+    "effects": [
+      {
+        "type": "DESTROY_ALL",
+        "value": 0,
+        "target": "ALL_MINIONS"
+      }
+    ]
+  },
+  {
+    "name": "Divine Spirit",
+    "slug": "divine-spirit",
+    "type": "SPELL",
+    "rarity": "COMMON",
+    "manaCost": 2,
+    "attack": 0,
+    "health": 0,
+    "heroClass": "NEUTRAL",
+    "imagePath": "assets/images/Minions/Divine Spirit.png",
+    "description": "Double a minion's Health.",
+    "effects": [
+      {
+        "type": "MULTIPLY_HEALTH",
+        "value": 0,
+        "target": "FRIENDLY_MINION"
+      }
+    ]
+  }
+]
