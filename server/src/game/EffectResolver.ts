@@ -13,8 +13,7 @@ import {
   TwistingNetherEffect,
 } from './effects/AoeEffects.js';
 import { executeEffect, type ICardEffect } from './effects/ICardEffect.js';
-import { BoardFullError, InvalidTargetError } from './errors.js';
-import { MAX_BOARD_SIZE } from './constants.js';
+import { InvalidTargetError } from './errors.js';
 
 // Effect cần target cụ thể — không có target hợp lệ thì reject, không cho cast.
 // Dùng chung helper với client để hai bên không lệch nhau.
@@ -27,6 +26,17 @@ const TARGETED_EFFECT_TARGETS = {
  * Polymorphism: các effect implement `ICardEffect`.
  */
 export class EffectResolver {
+  private readonly strategies: Record<string, (effect: EffectDefinition) => ICardEffect> = {
+    DAMAGE: e => new DamageEffect(e.value),
+    HEAL: e => new HealEffect(e.value),
+    BUFF_ATTACK: e => new BuffAttackEffect(e.value),
+    BUFF_HEALTH: e => new BuffHealthEffect(e.value),
+    MULTIPLY_HEALTH: () => new MultiplyHealthEffect(),
+    AOE_DAMAGE: e => new AoeDamageEffect(e.value),
+    TRANSFORM: () => new TransformEffect(),
+    DESTROY: e => new DestroyEffect(e.minAttack ?? 0),
+    DESTROY_ALL: () => new TwistingNetherEffect(),
+  };
   /** Kiểm tra target hợp lệ mà không thay đổi state — validate trước khi commit. */
   validate(
     player: Player,
@@ -34,12 +44,14 @@ export class EffectResolver {
     effect: EffectDefinition,
     targetId?: string,
   ): void {
+    this.buildStrategy(effect);
+    if (!Number.isFinite(effect.value) || effect.value < 0) throw new InvalidTargetError('Giá trị effect không hợp lệ.');
     const target = this.pickTarget(player, opponent, effect, targetId);
-    if (effect.type === 'TRANSFORM' && target instanceof Minion) {
-      const owner = target.ownerId === player.id ? player : opponent;
-      if (owner.boardCount >= MAX_BOARD_SIZE) {
-        throw new BoardFullError();
-      }
+    if (['TRANSFORM', 'DESTROY', 'BUFF_ATTACK', 'BUFF_HEALTH', 'MULTIPLY_HEALTH'].includes(effect.type) && target instanceof Player) {
+      throw new InvalidTargetError('Effect yêu cầu minion.');
+    }
+    if (effect.type === 'DESTROY' && target instanceof Minion && target.currentAttack < (effect.minAttack ?? 0)) {
+      throw new InvalidTargetError('Công mục tiêu thấp hơn điều kiện của lá bài.');
     }
   }
   resolve(
@@ -55,7 +67,10 @@ export class EffectResolver {
     }
     const target = this.pickTarget(player, opponent, effect, targetId);
     const strategy = this.buildStrategy(effect);
-    executeEffect(strategy, { game, player, opponent, target, value: effect.value });
+    const areaTargets = effect.target === 'ALL_MINIONS' ? [...player.getBoard(), ...opponent.getBoard()]
+      : effect.target === 'ALL_ENEMY_MINIONS' ? opponent.getBoard()
+      : effect.target === 'ALL_FRIENDLY_MINIONS' ? player.getBoard() : undefined;
+    executeEffect(strategy, { game, player, opponent, target, value: effect.value, areaTargets });
   }
 
   private resolveRandomEnemies(
@@ -125,7 +140,7 @@ export class EffectResolver {
     player: Player,
     opponent: Player,
     effect: EffectDefinition,
-  ): Array<Minion | Player> {
+  ): readonly (Minion | Player)[] {
     switch (effect.target) {
       case 'ENEMY_HERO':
         return [opponent];
@@ -157,27 +172,8 @@ export class EffectResolver {
   }
 
   private buildStrategy(effect: EffectDefinition): ICardEffect {
-    switch (effect.type) {
-      case 'DAMAGE':
-        return new DamageEffect(effect.value);
-      case 'HEAL':
-        return new HealEffect(effect.value);
-      case 'BUFF_ATTACK':
-        return new BuffAttackEffect(effect.value);
-      case 'BUFF_HEALTH':
-        return new BuffHealthEffect(effect.value);
-      case 'MULTIPLY_HEALTH':
-        return new MultiplyHealthEffect();
-      case 'AOE_DAMAGE':
-        return new AoeDamageEffect(effect.value);
-      case 'TRANSFORM':
-        return new TransformEffect();
-      case 'DESTROY':
-        return new DestroyEffect(effect.minAttack ?? 5);
-      case 'DESTROY_ALL':
-        return new TwistingNetherEffect();
-      default:
-        throw new InvalidTargetError(`Effect chưa hỗ trợ: ${effect.type}.`);
-    }
+    const factory = this.strategies[effect.type];
+    if (!factory) throw new InvalidTargetError(`Effect chưa hỗ trợ: ${effect.type}.`);
+    return factory(effect);
   }
 }

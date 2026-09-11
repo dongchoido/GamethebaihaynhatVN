@@ -9,4 +9,5 @@ export interface EffectContext {
   opponent: Player;
   target?: Minion | Player | null;
   value: number;
+  areaTargets?: readonly Minion[];
 }

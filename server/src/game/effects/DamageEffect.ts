@@ -10,13 +10,19 @@ export class DamageEffect implements ICardEffect {
     const target = context.target;
 
     if (target instanceof Player) {
-      target.heroState.takeDamage(this.amount);
+      const actual = target.heroState.takeDamage(this.amount);
+      if (target.id === context.opponent.id) {
+        context.player.recordDamage(actual);
+      }
       return;
     }
 
     if (target) {
       const minion = target as Minion;
-      minion.takeDamage(this.amount);
+      const actual = minion.takeDamage(this.amount);
+      if (minion.ownerId === context.opponent.id) {
+        context.player.recordDamage(actual);
+      }
       return;
     }
   }

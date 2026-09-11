@@ -80,7 +80,7 @@ model Hero {
 // GameStatus dùng string: WAITING | MULLIGAN | PLAYING | FINISHED
 model Game {
   id          String     @id
-  roomCode    String     @unique
+  roomCode    String
   status      String     @default("WAITING")
   startedAt   DateTime   @default(now())
   finishedAt  DateTime?
@@ -89,6 +89,8 @@ model Game {
   players     GamePlayer[]
   history     GameHistory[]
   actions     GameAction[]
+
+  @@index([roomCode])
 }
 
 model GamePlayer {

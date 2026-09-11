@@ -12,7 +12,7 @@ import { playSound, resolveAsset, SOUND, UI_IMAGE } from '../assets/assetRegistr
 
 // Màn hình chủ: tạo phòng / tham gia phòng bằng room code.
 export function HomeScreen() {
-  const { setPhase, setSession, setGameState, setLobbyPlayers, setLastError, lastError, reset } = useGameStore();
+  const { setPhase, setSession, setGameState, setLobbyPlayers, setSelectedHeroId, setLastError, lastError, reset } = useGameStore();
   const [playerName, setPlayerName] = useState('');
   const [roomCode, setRoomCode] = useState('');
   // Handlers cần tên mới nhất nhưng effect chỉ đăng ký 1 lần → dùng ref.
@@ -37,6 +37,8 @@ export function HomeScreen() {
         // Refresh ở lobby: server gửi lại danh sách → quay lại lobby.
         const storedAgain = loadStoredSession();
         if (storedAgain && storedAgain.roomCode === res.roomCode) {
+          const me = res.players.find(p => p.playerId === storedAgain.playerId);
+          setSelectedHeroId(me?.ready ? me.heroClass ?? null : null);
           setSession(storedAgain);
           setPhase('lobby');
         }
@@ -84,7 +86,7 @@ export function HomeScreen() {
       socket.off(ServerEvents.ACTION_REJECTED, onRejected);
       socket.off(ServerEvents.GAME_STATE_UPDATED, onGameState);
     };
-  }, [setPhase, setSession, setGameState, setLobbyPlayers, setLastError, reset]);
+  }, [setPhase, setSession, setGameState, setLobbyPlayers, setSelectedHeroId, setLastError, reset]);
 
   const handleCreate = () => {
     if (!playerName.trim()) {

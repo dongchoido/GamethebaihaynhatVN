@@ -1,6 +1,21 @@
 import type { CardDefinition } from '@coincard/shared';
 import type { PrismaClient } from '@prisma/client';
 
+export interface HeroRecord {
+  id: string; name: string; heroClass: string; powerName: string; powerCost: number; imagePath: string;
+}
+export interface ICatalogRepository {
+  heroes(): Promise<HeroRecord[]>;
+  cards(): Promise<CardDefinition[]>;
+}
+export class PrismaCatalogRepository implements ICatalogRepository {
+  constructor(private readonly client: PrismaClient) {}
+  heroes(): Promise<HeroRecord[]> { return this.client.hero.findMany(); }
+  async cards(): Promise<CardDefinition[]> {
+    return await this.client.card.findMany({ where: { collectible: true } }) as unknown as CardDefinition[];
+  }
+}
+
 // Dependency Inversion — GameService phụ thuộc interface, không trực tiếp Prisma.
 export interface ICardRepository {
   findAll(): Promise<CardDefinition[]>;
@@ -38,7 +53,8 @@ export class PrismaGameRepository implements IGameRepository {
     players: { playerId: string; name: string; winner: boolean }[];
     winnerId: string | null;
   }): Promise<void> {
-    await this.client.game.upsert({
+    await this.client.$transaction(async client => {
+    await client.game.upsert({
       where: { id: input.gameId },
       update: {
         status: 'FINISHED',
@@ -56,12 +72,12 @@ export class PrismaGameRepository implements IGameRepository {
 
     for (const p of input.players) {
       // Upsert player if not exist (pragma: name unique-ish)
-      await this.client.player.upsert({
+      await client.player.upsert({
         where: { id: p.playerId },
         update: { name: p.name },
         create: { id: p.playerId, name: p.name },
       });
-      await this.client.gamePlayer.upsert({
+      await client.gamePlayer.upsert({
         where: { gameId_playerId: { gameId: input.gameId, playerId: p.playerId } },
         update: { winner: p.winner },
         create: {
@@ -72,5 +88,6 @@ export class PrismaGameRepository implements IGameRepository {
         },
       });
     }
+    });
   }
 }

@@ -28,7 +28,7 @@ export function resolveAttack(
     if (taunts.length > 0) {
       throw new TauntRequiredError();
     }
-    opponent.heroState.takeDamage(attacker.currentAttack);
+    player.recordDamage(opponent.heroState.takeDamage(attacker.currentAttack));
     attacker.markAsAttacked();
     return;
   }
@@ -43,7 +43,7 @@ export function resolveAttack(
   if (taunts.length > 0 && !defender.hasTaunt) {
     throw new TauntRequiredError();
   }
-  attacker.takeDamage(defender.currentAttack);
-  defender.takeDamage(attacker.currentAttack);
+  opponent.recordDamage(attacker.takeDamage(defender.currentAttack));
+  player.recordDamage(defender.takeDamage(attacker.currentAttack));
   attacker.markAsAttacked();
 }

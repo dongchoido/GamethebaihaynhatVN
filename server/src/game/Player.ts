@@ -11,6 +11,10 @@ export class Player {
   private maxMana: number;
   private hand: CardDefinition[];
   private readonly board: Minion[] = [];
+  // Thống kê vinh danh — chỉ đếm, không ảnh hưởng rule.
+  private damageDealtValue = 0;
+  private cardsPlayedValue = 0;
+  private minionsSummonedValue = 0;
 
   constructor(
     public readonly playerId: string,
@@ -36,15 +40,11 @@ export class Player {
   }
 
   get handCards(): Readonly<CardDefinition[]> {
-    return this.hand.map((c) => ({ ...c }));
+    return structuredClone(this.hand);
   }
 
   get handCount(): number {
     return this.hand.length;
-  }
-
-  get boardCards(): Readonly<Minion[]> {
-    return this.board;
   }
 
   get boardCount(): number {
@@ -53,6 +53,28 @@ export class Player {
 
   get deckSize(): number {
     return this.deck.size;
+  }
+
+  get damageDealt(): number {
+    return this.damageDealtValue;
+  }
+
+  get cardsPlayed(): number {
+    return this.cardsPlayedValue;
+  }
+
+  get minionsSummoned(): number {
+    return this.minionsSummonedValue;
+  }
+
+  recordDamage(amount: number): void {
+    if (amount > 0) {
+      this.damageDealtValue += amount;
+    }
+  }
+
+  recordCardPlayed(): void {
+    this.cardsPlayedValue += 1;
   }
 
   get heroState(): Hero {
@@ -64,6 +86,9 @@ export class Player {
   }
 
   spendMana(amount: number): void {
+    if (!Number.isFinite(amount) || amount < 0 || amount > this.mana) {
+      throw new Error('Mana không hợp lệ.');
+    }
     this.mana -= amount;
   }
 
@@ -79,17 +104,10 @@ export class Player {
     return this.deck.drawOne();
   }
 
-  drawFromHand(count: number): CardDefinition[] {
-    return this.deck.drawMultiple(count);
-  }
-
   drawAndAddToHand(count: number): void {
     for (let i = 0; i < count; i++) {
-      try {
-        this.addToHand(this.deck.drawOne());
-      } catch {
-        // Fatigue — deck hết thì phải phải chịu damage theo rule (ở đây không cần draw)
-      }
+      if (this.deck.size === 0) break; // Chưa áp dụng fatigue.
+      this.addToHand(this.deck.drawOne());
     }
   }
 
@@ -118,9 +136,9 @@ export class Player {
     if (!removed) {
       return;
     }
-    this.deck.returnToBottom(removed);
     const cheap = this.deck.drawCheapest(maxCost);
     if (cheap) {
+      this.deck.returnToBottom(removed);
       this.addToHand(cheap);
     } else {
       this.addToHand(removed);
@@ -128,20 +146,21 @@ export class Player {
   }
 
   /** Dùng bởi GameEngine/Mulligan ban đầu. */
-  getBoard(): Minion[] {
-    return this.board;
+  getBoard(): readonly Minion[] {
+    return this.board.slice();
   }
 
   addToHand(card: CardDefinition): void {
     if (this.hand.length >= MAX_HAND_SIZE) {
       return; // HS rule: deck full → burn (đồng bộ UI)
     }
-    this.hand.push(card);
+    this.hand.push(structuredClone(card));
   }
 
   /** Tìm bài trong tay mà không lấy ra — dùng cho validate-trước-mutation. */
   findCardInHand(instanceId: string): CardDefinition | null {
-    return this.hand.find((c) => c.id === instanceId) ?? null;
+    const card = this.hand.find((c) => c.id === instanceId);
+    return card ? structuredClone(card) : null;
   }
 
   removeFromHand(instanceId: string): CardDefinition {
@@ -157,10 +176,12 @@ export class Player {
   }
 
   summonMinion(minion: Minion): void {
+    if (minion.ownerId !== this.id) throw new Error('Sai chủ sở hữu minion.');
     if (this.board.length >= MAX_BOARD_SIZE) {
       throw new BoardFullError();
     }
     this.board.push(minion);
+    this.minionsSummonedValue += 1;
   }
 
   removeMinion(instanceId: string): Minion | null {
@@ -182,5 +203,27 @@ export class Player {
         this.board.splice(i, 1);
       }
     }
+  }
+
+  replaceMinion(instanceId: string, replacement: Minion): void {
+    const index = this.board.findIndex(m => m.instanceId === instanceId);
+    if (index < 0 || replacement.ownerId !== this.id) throw new Error('Không thể thay minion.');
+    this.board[index] = replacement;
+  }
+
+  /** Opaque undo operation: caller cannot edit snapshot internals. */
+  checkpoint(): () => void {
+    const hand = structuredClone(this.hand);
+    const board = this.board.slice();
+    const undoUnits = board.map(m => m.checkpoint());
+    const undoHero = this.hero.checkpoint();
+    const undoDeck = this.deck.checkpoint();
+    const { mana, maxMana, damageDealtValue, cardsPlayedValue, minionsSummonedValue } = this;
+    return () => {
+      this.hand = structuredClone(hand);
+      this.board.splice(0, this.board.length, ...board);
+      undoUnits.forEach(undo => undo()); undoHero(); undoDeck();
+      Object.assign(this, { mana, maxMana, damageDealtValue, cardsPlayedValue, minionsSummonedValue });
+    };
   }
 }

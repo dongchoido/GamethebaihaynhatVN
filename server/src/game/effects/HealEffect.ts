@@ -9,6 +9,8 @@ export class HealEffect implements ICardEffect {
     const target = context.target;
     if (target instanceof Player) {
       target.heroState.heal(this.amount);
+    } else if (target) {
+      target.heal(this.amount);
     }
   }
 }

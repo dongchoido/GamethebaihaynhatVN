@@ -32,19 +32,6 @@ body {
   gap: 12px;
 }
 
-.game-title {
-  font-size: 72px;
-  color: #ffd75e;
-  text-shadow: 0 3px 0 #5b3000, 0 0 24px rgba(0, 0, 0, 0.8);
-  letter-spacing: 4px;
-}
-
-.game-subtitle {
-  font-size: 22px;
-  color: #f5e6c8;
-  text-shadow: 0 2px 4px #000;
-}
-
 .home-form {
   display: flex;
   flex-direction: column;
@@ -474,10 +461,6 @@ body {
 
 .lobby-heading::after {
   background: linear-gradient(90deg, #c9a544, transparent);
-}
-
-.lobby-wait {
-  width: 120px;
 }
 
 .lobby-status {
@@ -1370,21 +1353,298 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 20px;
+  gap: 18px;
+  padding: 20px;
+  overflow-y: auto;
 }
 
-.victory-text {
-  font-size: 96px;
+.honor-title {
+  text-align: center;
+}
+
+.honor-title h1 {
+  margin: 0;
+  font-size: clamp(44px, 7vw, 84px);
+  letter-spacing: 6px;
+  font-family: Georgia, 'Times New Roman', serif;
+}
+
+.honor-victory {
   color: #ffd75e;
-  text-shadow: 0 4px 0 #5b3000, 0 0 40px rgba(0, 0, 0, 0.9);
-  letter-spacing: 8px;
+  text-shadow: 0 3px 0 #5b3000, 0 0 34px rgba(255, 190, 60, 0.65), 0 4px 10px #000;
 }
 
-.defeat-text {
-  font-size: 96px;
-  color: #a33;
-  text-shadow: 0 4px 0 #200, 0 0 40px rgba(0, 0, 0, 0.9);
-  letter-spacing: 8px;
+.honor-defeat {
+  color: #c0392b;
+  text-shadow: 0 3px 0 #200, 0 0 34px rgba(200, 60, 40, 0.6), 0 4px 10px #000;
+}
+
+.honor-sub {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 5px 34px;
+  font-size: 19px;
+  color: #f3ead2;
+  letter-spacing: 1px;
+  background: linear-gradient(180deg, #152441, #0a1322);
+  border: 1px solid #c9a544;
+  border-radius: 6px;
+  box-shadow: 0 0 14px rgba(64, 140, 255, 0.4);
+}
+
+.honor-body {
+  display: grid;
+  grid-template-columns: 300px auto 300px;
+  align-items: stretch;
+  gap: 26px;
+  max-width: 1100px;
+  width: 100%;
+  justify-content: center;
+}
+
+.honor-panel {
+  position: relative;
+  padding: 20px 20px 16px;
+  background: linear-gradient(180deg, rgba(16, 28, 52, 0.94), rgba(8, 14, 28, 0.94));
+  border: 2px solid #c9a544;
+  border-radius: 10px;
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.65), inset 0 0 30px rgba(0, 0, 0, 0.5);
+}
+
+.honor-panel::before {
+  content: '';
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  width: 20px;
+  height: 20px;
+  transform: translateX(-50%) rotate(45deg);
+  background: radial-gradient(circle at 35% 30%, #bfe6ff 0%, #3f9df2 40%, #123a6e 100%);
+  border: 2px solid #d8b45a;
+  border-radius: 4px;
+  box-shadow: 0 0 10px rgba(90, 170, 255, 0.9);
+}
+
+.honor-panel h2 {
+  margin: 4px 0 12px;
+  font-size: 18px;
+  letter-spacing: 1px;
+  text-align: center;
+  color: #ffe9a8;
+  text-shadow: 0 2px 3px #000;
+}
+
+.honor-panel ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.honor-panel li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 2px;
+  border-bottom: 1px solid rgba(201, 165, 68, 0.35);
+  color: #dbe6fa;
+  font-size: 15px;
+}
+
+.honor-panel li:last-child {
+  border-bottom: 0;
+}
+
+.honor-panel li strong {
+  margin-left: auto;
+  color: #ffe9a8;
+  font-size: 17px;
+}
+
+.honor-ico {
+  color: #d8b45a;
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.honor-foot {
+  margin: 14px 0 0;
+  text-align: center;
+  font-size: 12px;
+  letter-spacing: 2px;
+  line-height: 1.7;
+  color: rgba(219, 230, 250, 0.6);
+}
+
+.honor-badge {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 2px solid #d8b45a;
+  color: #ffd75e;
+  background: radial-gradient(circle at 35% 30%, #2a3d63, #0a1322 75%);
+  box-shadow: 0 0 10px rgba(255, 215, 94, 0.4);
+}
+
+.honor-award-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.honor-award-text strong {
+  margin: 0;
+  color: #f3ead2;
+  font-size: 15px;
+}
+
+.honor-award-text span {
+  color: #9db1d4;
+  font-size: 13px;
+}
+
+.honor-panel li.locked {
+  opacity: 0.45;
+  filter: grayscale(0.7);
+}
+
+.honor-hero {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 260px;
+}
+
+.honor-hero::before {
+  content: '';
+  position: absolute;
+  width: 340px;
+  height: 340px;
+  background: radial-gradient(circle, rgba(120, 180, 255, 0.4) 0%, transparent 65%);
+  pointer-events: none;
+}
+
+.honor-hero-gem {
+  width: 22px;
+  height: 22px;
+  transform: rotate(45deg);
+  background: radial-gradient(circle at 35% 30%, #bfe6ff 0%, #3f9df2 40%, #123a6e 100%);
+  border: 2px solid #d8b45a;
+  border-radius: 4px;
+  box-shadow: 0 0 12px rgba(90, 170, 255, 0.9);
+  margin-bottom: -11px;
+  z-index: 2;
+}
+
+.honor-portrait {
+  width: 230px;
+  height: 280px;
+  overflow: hidden;
+  border: 4px solid #c9a544;
+  border-radius: 115px 115px 16px 16px;
+  background: #060b16;
+  box-shadow: 0 0 34px rgba(255, 215, 94, 0.45), 0 14px 34px rgba(0, 0, 0, 0.7), inset 0 0 24px rgba(0, 0, 0, 0.6);
+}
+
+.honor-portrait img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
+}
+
+.honor-nameplate {
+  margin-top: -22px;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 10px 30px 12px;
+  background: linear-gradient(180deg, #152441, #0a1322);
+  border: 2px solid #c9a544;
+  border-radius: 8px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6);
+}
+
+.honor-nameplate strong {
+  color: #ffe9a8;
+  font-size: 20px;
+  letter-spacing: 0.5px;
+}
+
+.honor-nameplate span {
+  color: #9db1d4;
+  font-size: 14px;
+}
+
+.honor-actions {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.honor-btn {
+  border: 0;
+  padding: 2px;
+  background: linear-gradient(180deg, #e8cd7e, #9a7420 60%, #6e4a0c);
+  clip-path: polygon(16px 0, calc(100% - 16px) 0, 100% 50%, calc(100% - 16px) 100%, 16px 100%, 0 50%);
+  cursor: pointer;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.6));
+  font-family: inherit;
+}
+
+.honor-btn span {
+  display: block;
+  padding: 13px 46px;
+  font-size: 20px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  white-space: nowrap;
+  clip-path: polygon(15px 0, calc(100% - 15px) 0, 100% 50%, calc(100% - 15px) 100%, 15px 100%, 0 50%);
+}
+
+.honor-btn.blue span {
+  background: linear-gradient(180deg, #2c4f7e, #16283f);
+  color: #ffe9a8;
+  text-shadow: 0 2px 2px #000;
+}
+
+.honor-btn.red {
+  background: linear-gradient(180deg, #f0d090, #9a7420 60%, #6e4a0c);
+}
+
+.honor-btn.red span {
+  background: linear-gradient(180deg, #a32424, #6e1212);
+  color: #ffe9e9;
+  text-shadow: 0 2px 2px #000;
+}
+
+.honor-btn:hover:not(:disabled) {
+  filter: brightness(1.15) drop-shadow(0 4px 8px rgba(0, 0, 0, 0.6));
+}
+
+.honor-btn:disabled {
+  cursor: default;
+  filter: grayscale(0.7) brightness(0.65);
+}
+
+@media (max-width: 980px) {
+  .honor-body {
+    grid-template-columns: 1fr;
+    max-width: 420px;
+  }
+  .honor-hero {
+    order: -1;
+  }
 }
 
 /* ---------- Debug ---------- */
@@ -1411,9 +1671,6 @@ body {
   .card-view {
     width: 88px;
     height: 128px;
-  }
-  .game-title {
-    font-size: 48px;
   }
 }
 
@@ -1464,4 +1721,37 @@ body {
 .my-actions .deck-count {
   border: 2px solid #c9a544;
   background: rgba(6, 11, 22, 0.9);
+}
+
+/* Keep controls reachable on narrow or short screens without changing the art. */
+.game-screen { grid-template-columns: minmax(0, 1fr); }
+.game-screen > p[role="status"] { position: fixed; top: 8px; left: 8px; right: 8px; z-index: 20; background: #101c34; padding: 8px; text-align: center; }
+@media (max-width: 1100px), (max-height: 650px) {
+  .game-screen { display: flex; flex-direction: column; overflow-y: auto; justify-content: flex-start; }
+  .board-row { flex: 0 0 130px; min-width: 0; justify-content: flex-start; overflow-x: auto; }
+  .board-empty { margin: auto; }
+  .board-row > button { flex-shrink: 0; }
+  .my-area { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; min-height: auto; }
+  .my-hand-wrap { width: 100%; max-width: 100%; padding: 14px 4px; margin: 0; }
+  .my-hand { overflow-x: auto; padding: 12px 4px 8px; gap: 8px; }
+  .my-hand .card-view { flex-shrink: 0; margin-left: 0; transform: none; }
+  .my-actions { flex-wrap: wrap; justify-content: center; }
+  .message-pill { padding: 7px 14px; font-size: 16px; letter-spacing: 1px; }
+}
+@media (max-width: 600px) {
+  .game-screen { padding: 12px 8px; }
+  .opponent-area { gap: 8px; }
+  .opponent-hand { max-width: 130px; }
+  .my-actions .btn-concede { width: 120px; height: 50px; }
+  .my-actions .end-turn-btn { width: 120px; }
+  .home-panel { padding: 24px 16px; }
+  .home-tagline { white-space: normal; font-size: 18px; }
+  .lobby-heading { white-space: normal; text-align: center; font-size: 22px; }
+  .lobby-main { min-width: 0; padding: 20px 10px; }
+  .lobby-banner { max-width: 100%; padding: 12px; }
+  .lobby-gem { display: none; }
+  .hero-card { width: 130px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
 }

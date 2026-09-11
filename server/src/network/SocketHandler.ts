@@ -1,7 +1,7 @@
 import type { Server, Socket } from 'socket.io';
 import { RoomManager } from '../room/RoomManager.js';
 import { GameService } from './GameService.js';
-import { PrismaGameRepository } from '../database/repositories.js';
+import { PrismaGameRepository, PrismaCatalogRepository } from '../database/repositories.js';
 import { prisma } from '../database/prismaClient.js';
 import { GameRuleError } from '../game/errors.js';
 import {
@@ -21,7 +21,7 @@ import { objectPayload, optionalString, requiredString } from './validation.js';
  */
 export function registerSocketHandler(io: Server): void {
   const roomManager = new RoomManager();
-  const service = new GameService(io, roomManager, new PrismaGameRepository(prisma), prisma);
+  const service = new GameService(io, roomManager, new PrismaGameRepository(prisma), new PrismaCatalogRepository(prisma));
   service.startCleanup();
 
   const safe = (socket: Socket, fn: () => void): void => {

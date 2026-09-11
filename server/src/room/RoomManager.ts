@@ -7,7 +7,8 @@ export class RoomManager {
   private sessions = new Map<string, Room>();
 
   createRoom(): Room {
-    const roomCode = this.generateCode();
+    let roomCode = this.generateCode();
+    while (this.rooms.has(roomCode)) roomCode = this.generateCode();
     const room = new Room(roomCode);
     this.rooms.set(roomCode, room);
     return room;

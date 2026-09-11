@@ -39,6 +39,9 @@ export interface PlayerState {
   handCount: number;
   board: MinionState[];
   deckCount: number;
+  damageDealt: number;
+  cardsPlayed: number;
+  minionsSummoned: number;
 }
 
 export interface GameState {
@@ -50,4 +53,5 @@ export interface GameState {
   players: PlayerState[];
   winnerId: string | null;
   statusMessage: string;
+  manualDrawUsed: boolean;
 }

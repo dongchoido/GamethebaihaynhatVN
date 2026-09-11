@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
 import type { GameState } from '@coincard/shared';
+import { socketService } from '../socket/socketService';
 
 export type ScreenPhase = 'home' | 'lobby' | 'game' | 'over';
 
@@ -61,6 +62,7 @@ export function GameStoreProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const reset = useCallback(() => {
+    socketService.clearSession();
     setPhase('home');
     setSession(null);
     setGameState(null);

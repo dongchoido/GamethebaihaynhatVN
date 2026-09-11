@@ -7,7 +7,7 @@ import { GameStatus, CardType, effectNeedsTarget } from '@coincard/shared';
 import { EffectResolver } from './EffectResolver.js';
 import { resolveAttack } from './CombatService.js';
 import { MAX_BOARD_SIZE, MAX_HAND_SIZE } from './constants.js';
-import { SILVER_HAND_RECRUIT_TOKEN } from './tokenCards.js';
+import { heroPowerFor } from './HeroPower.js';
 import {
   NotPlayerTurnError,
   NotEnoughManaError,
@@ -78,8 +78,11 @@ export class GameEngine {
     }
 
     // ===== PHASE 2: COMMIT — đã validate xong, thực thi nguyên tử.
+    const undo = game.getPlayers().map(p => p.checkpoint());
+    try {
     player.removeFromHand(cardInstanceId);
     player.spendMana(card.manaCost);
+    player.recordCardPlayed();
 
     if (card.type === CardType.MINION) {
       const minion = new Minion(
@@ -103,6 +106,10 @@ export class GameEngine {
     }
 
     this.checkWinner(game);
+    } catch (error) {
+      undo.forEach(restore => restore());
+      throw error;
+    }
   }
 
   attack(
@@ -156,52 +163,17 @@ export class GameEngine {
     if (player.currentMana < hero.powerCost) {
       throw new NotEnoughManaError();
     }
-    if (hero.heroClass === 'PALADIN' && player.boardCount >= MAX_BOARD_SIZE) {
-      throw new BoardFullError();
+    const power = heroPowerFor(hero.heroClass);
+    power.validate(player);
+    const undo = game.getPlayers().map(p => p.checkpoint());
+    try {
+      player.spendMana(hero.powerCost);
+      power.execute(game, player);
+      this.checkWinner(game);
+    } catch (error) {
+      undo.forEach(restore => restore());
+      throw error;
     }
-    player.spendMana(hero.powerCost);
-
-    switch (hero.heroClass) {
-      case 'MAGE':
-        // Fireblast — 1 damage tới opponent hero
-        game.getOpponent().heroState.takeDamage(1);
-        break;
-      case 'HUNTER':
-        // Steady Shot — 2 damage tới opponent hero
-        game.getOpponent().heroState.takeDamage(2);
-        break;
-      case 'PALADIN':
-        // Reinforce — summon 1/1 Silver Hand Recruit
-        player.summonMinion(
-          new Minion(
-            makeUniqueCardId(),
-            SILVER_HAND_RECRUIT_TOKEN.id,
-            SILVER_HAND_RECRUIT_TOKEN.name,
-            SILVER_HAND_RECRUIT_TOKEN.attack,
-            SILVER_HAND_RECRUIT_TOKEN.health,
-            player.id,
-            false,
-            SILVER_HAND_RECRUIT_TOKEN.imagePath,
-          ),
-        );
-        break;
-      case 'PRIEST':
-        // Lesser Heal — heal 2 HP hero mình
-        hero.heal(2);
-        break;
-      case 'WARLOCK':
-        // Life Tap — chịu 2 damage + draw 1 lá
-        hero.takeDamage(2);
-        try {
-          player.addToHand(player.drawCard());
-        } catch {
-          // fatigue
-        }
-        break;
-      default:
-        break;
-    }
-    this.checkWinner(game);
   }
 
   concede(gameId: string, playerId: string): void {
@@ -244,6 +216,10 @@ export class GameEngine {
   }
 
   private checkWinner(game: Game): void {
+    if (game.getPlayers().every(p => p.heroState.isDead())) {
+      game.finish(null, 'DRAW');
+      return;
+    }
     for (const p of game.getPlayers()) {
       if (p.heroState.isDead()) {
         const winner = game.getPlayers().find((x) => x.id !== p.id);

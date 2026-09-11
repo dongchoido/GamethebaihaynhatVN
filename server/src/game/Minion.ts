@@ -50,11 +50,15 @@ export class Minion {
     this.canAttackValue = true;
   }
 
-  takeDamage(amount: number): void {
-    this.health -= amount;
+  takeDamage(amount: number): number {
+    if (!Number.isFinite(amount) || amount < 0) throw new Error('Damage không hợp lệ.');
+    const actual = Math.min(Math.max(0, this.health), amount);
+    this.health -= actual;
+    return actual;
   }
 
   heal(amount: number): void {
+    if (!Number.isFinite(amount) || amount < 0) throw new Error('Heal không hợp lệ.');
     this.health = Math.min(this.maximumHealth, this.health + amount);
   }
 
@@ -75,5 +79,12 @@ export class Minion {
 
   isDead(): boolean {
     return this.health <= 0;
+  }
+
+  checkpoint(): () => void {
+    const { health, maximumHealth, attack, canAttackValue, summonedThisTurnValue } = this;
+    return () => {
+      Object.assign(this, { health, maximumHealth, attack, canAttackValue, summonedThisTurnValue });
+    };
   }
 }

@@ -6,11 +6,13 @@ import {
   type PlayerJoinedResponse,
 } from '@coincard/shared';
 import { socketService } from '../socket/socketService';
+import { useConnection } from '../socket/useConnection';
 import { useGameStore } from '../store/gameStore';
 import { getHeroAsset, listHeroAssets, playSound, resolveAsset, SOUND, UI_IMAGE } from '../assets/assetRegistry';
 
 // Sảnh chờ: hiện mã phòng, chọn hero, đợi đủ 2 người.
 export function LobbyScreen() {
+  const connected = useConnection();
   const { session, setPhase, setGameState, setSelectedHeroId, selectedHeroId, lobbyPlayers, setLobbyPlayers, setLastError, lastError, reset } = useGameStore();
   const [roomReady, setRoomReady] = useState(lobbyPlayers.length >= 2);
 
@@ -19,6 +21,8 @@ export function LobbyScreen() {
 
     const onPlayerJoined = (res: PlayerJoinedResponse) => {
       setLobbyPlayers(res.players);
+      const me = res.players.find(p => p.playerId === session?.playerId);
+      if (me) setSelectedHeroId(me.ready ? me.heroClass ?? null : null);
       setLastError(null);
       if (res.players.length >= 2) {
         setRoomReady(true);
@@ -41,6 +45,8 @@ export function LobbyScreen() {
       if (gameState.status === GameStatus.PLAYING) {
         playSound(SOUND.start);
         setPhase('game');
+      } else if (gameState.status === GameStatus.FINISHED) {
+        setPhase('over');
       }
     };
 
@@ -56,10 +62,10 @@ export function LobbyScreen() {
       socket.off(ServerEvents.ACTION_REJECTED, onRejected);
       socket.off(ServerEvents.PLAYER_DISCONNECTED, onDisconnected);
     };
-  }, [setGameState, setPhase, setLobbyPlayers, setLastError, setSelectedHeroId, reset]);
+  }, [setGameState, setPhase, setLobbyPlayers, setLastError, setSelectedHeroId, reset, session?.playerId]);
 
   const handleSelectHero = (heroClass: string) => {
-    if (!session) return;
+    if (!session || !connected) return;
     setSelectedHeroId(heroClass);
     playSound(SOUND.heroSelect);
     socketService.selectDeck(heroClass, session.roomCode);
@@ -88,6 +94,7 @@ export function LobbyScreen() {
         </button>
       </aside>
       <div className="lobby-main">
+        {!connected && <p role="status">Đang kết nối lại với server...</p>}
         <div className="lobby-banner">
           <span className="lobby-gem left" aria-hidden="true" />
           <div className="lobby-banner-text">

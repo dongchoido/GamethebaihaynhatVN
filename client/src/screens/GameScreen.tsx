@@ -10,6 +10,7 @@ import {
   type TurnChangedResponse,
 } from '@coincard/shared';
 import { socketService } from '../socket/socketService';
+import { useConnection } from '../socket/useConnection';
 import { useGameStore } from '../store/gameStore';
 import { CardView } from '../components/CardView';
 import { MinionView } from '../components/MinionView';
@@ -68,6 +69,8 @@ function validTargetIds(card: CardDefinition, myId: string, oppId: string, myBoa
 
 // Màn hình trận đấu — click để chơi (core gameplay không phụ thuộc drag/drop).
 export function GameScreen() {
+  const connected = useConnection();
+  const [opponentAway, setOpponentAway] = useState(false);
   const { session, gameState, setGameState, setPhase, setLastError, lastError, reset } = useGameStore();
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [selectedAttackerId, setSelectedAttackerId] = useState<string | null>(null);
@@ -116,24 +119,31 @@ export function GameScreen() {
       // statusMessage trong state đã đủ; giữ handler để log/debug.
     };
     const onGameOver = (_res: GameOverResponse) => {
-      playSound(SOUND.victory);
+      if (_res.winnerId === session?.playerId) playSound(SOUND.victory);
       setPhase('over');
     };
+    const onLeft = ({ playerId }: { playerId: string }) => { if (playerId !== session?.playerId) setOpponentAway(true); };
+    const onJoined = () => { setOpponentAway(false); setLastError(null); };
+    socket.on(ServerEvents.PLAYER_DISCONNECTED, onLeft);
+    socket.on(ServerEvents.PLAYER_JOINED, onJoined);
     socket.on(ServerEvents.GAME_STATE_UPDATED, onGameState);
     socket.on(ServerEvents.ACTION_REJECTED, onRejected);
     socket.on(ServerEvents.TURN_CHANGED, onTurnChanged);
     socket.on(ServerEvents.GAME_OVER, onGameOver);
     return () => {
+      socket.off(ServerEvents.PLAYER_DISCONNECTED, onLeft);
+      socket.off(ServerEvents.PLAYER_JOINED, onJoined);
       socket.off(ServerEvents.GAME_STATE_UPDATED, onGameState);
       socket.off(ServerEvents.ACTION_REJECTED, onRejected);
       socket.off(ServerEvents.TURN_CHANGED, onTurnChanged);
       socket.off(ServerEvents.GAME_OVER, onGameOver);
     };
-  }, [setGameState, setPhase, setLastError, reset]);
+  }, [setGameState, setPhase, setLastError, reset, session?.playerId]);
 
   const myPlayer = gameState?.players.find((p) => p.playerId === session?.playerId) ?? null;
   const oppPlayer = gameState?.players.find((p) => p.playerId !== session?.playerId) ?? null;
   const isMyTurn =
+    connected &&
     !!gameState &&
     !!session &&
     gameState.status === GameStatus.PLAYING &&
@@ -252,7 +262,7 @@ export function GameScreen() {
   };
 
   const handleDraw = () => {
-    if (!isMyTurn || drawPending) return;
+    if (!isMyTurn || drawPending || gameState.manualDrawUsed) return;
     setLastError(null);
     setDrawPending(true);
     socketService.drawCard(gameState.gameId);
@@ -260,6 +270,7 @@ export function GameScreen() {
   };
 
   const handleConcede = () => {
+    if (!connected) return;
     socketService.concede(gameState.gameId);
   };
 
@@ -267,6 +278,8 @@ export function GameScreen() {
 
   return (
     <div className="game-screen" style={{ backgroundImage: `radial-gradient(ellipse at center, rgba(33, 20, 12, 0.28), rgba(12, 8, 6, 0.88)), url(${resolveAsset(UI_IMAGE.playground)})` }}>
+      {!connected && <p role="status">Mất kết nối với server. Đang kết nối lại...</p>}
+      {connected && opponentAway && <p role="status">Đối thủ mất kết nối. Đang chờ quay lại...</p>}
       {/* Đối thủ */}
       <div className="opponent-area">
         <div className="opponent-hand">
@@ -346,7 +359,7 @@ export function GameScreen() {
             type="button"
             className="deck-pile"
             onClick={handleDraw}
-            disabled={!isMyTurn || drawPending || myPlayer.hand.length >= MAX_HAND || myPlayer.deckCount <= 0}
+            disabled={!isMyTurn || drawPending || gameState.manualDrawUsed || myPlayer.hand.length >= MAX_HAND || myPlayer.deckCount <= 0}
             title={myPlayer.hand.length >= MAX_HAND ? 'Tay đầy (6/6)' : 'Rút 1 lá (mỗi turn 1 lần)'}
           >
             <img src={resolveAsset(UI_IMAGE.cardBack)} alt="Bộ bài" draggable={false} />

@@ -360,6 +360,38 @@ describe('GameEngine', () => {
     assert.equal(p2.findMinion('taunt-1')?.currentHealth, 1);
   });
 
+  it('thống kê vinh danh: đánh bài, summon, damage được đếm đúng', () => {
+    const { engine, game } = setupEngine();
+    const p1 = game.getPlayerById('p1');
+    const p2 = game.getPlayerById('p2');
+    assert.equal(p1.cardsPlayed, 0);
+    assert.equal(p1.damageDealt, 0);
+    assert.equal(p1.minionsSummoned, 0);
+    // Đánh 1 minion 3/3 có charge để tấn ngay.
+    const charger = makeMinionCard({ manaCost: 0, attack: 3, health: 3, keywords: ['CHARGE'] });
+    p1.addToHand(charger);
+    engine.playCard('game-1', 'p1', charger.id);
+    assert.equal(p1.cardsPlayed, 1);
+    assert.equal(p1.minionsSummoned, 1);
+    const minion = p1.getBoard().find((m) => m.cardId === charger.id);
+    if (!minion) throw new Error('No minion');
+    engine.attack('game-1', 'p1', minion.instanceId, 'p2');
+    assert.equal(p1.damageDealt, 3);
+    assert.equal(p2.heroState.currentHealth, 27);
+    // Spell damage vào quái địch cũng được đếm.
+    p2.summonMinion(new Minion('foe-3', 'c', 'Foe', 2, 5, 'p2', false, 'img'));
+    const zap = makeSpellCard({
+      manaCost: 0,
+      effects: [{ type: 'DAMAGE', value: 2, target: 'ENEMY_MINION' }],
+    });
+    engine.endTurn('game-1', 'p1');
+    engine.endTurn('game-1', 'p2');
+    p1.addToHand(zap);
+    engine.playCard('game-1', 'p1', zap.id, 'foe-3');
+    assert.equal(p1.cardsPlayed, 2);
+    assert.equal(p1.damageDealt, 5);
+  });
+
   it('tay đầu luôn có lá rẻ (opening guarantee)', () => {
     for (let i = 0; i < 20; i++) {
       const { game } = setupEngine();

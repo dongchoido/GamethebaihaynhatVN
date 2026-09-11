@@ -8,7 +8,6 @@ import type { Player as DomainPlayer } from '../game/Player.js';
 import type { Minion } from '../game/Minion.js';
 import { RoomManager } from '../room/RoomManager.js';
 import type { Room, RoomPlayer } from '../room/Room.js';
-import type { PrismaClient } from '@prisma/client';
 import {
   ServerEvents,
   type CardDefinition,
@@ -17,7 +16,7 @@ import {
   type HeroState,
   type MinionState,
 } from '@coincard/shared';
-import type { IGameRepository } from '../database/repositories.js';
+import type { IGameRepository, ICatalogRepository } from '../database/repositories.js';
 import { GameRuleError, ReconnectFailedError } from '../game/errors.js';
 import { DECK_SIZE } from '../game/constants.js';
 import { ROOM_IDLE_TTL_MS, ROOM_SWEEP_INTERVAL_MS } from '../game/constants.js';
@@ -30,6 +29,7 @@ export class GameService {
   private readonly engine = new GameEngine();
   private readonly gameIndex = new Map<string, string>(); // roomCode → gameId
   private readonly savedGames = new Set<string>();
+  private readonly pendingSaves = new Set<string>();
   private readonly gameOverEmitted = new Set<string>();
   private readonly lastTurnBroadcast = new Map<string, number>();
 
@@ -37,7 +37,7 @@ export class GameService {
     private readonly io: Server,
     private readonly roomManager: RoomManager,
     private readonly gameRepository: IGameRepository,
-    private readonly prisma: PrismaClient,
+    private readonly catalog: ICatalogRepository,
   ) {}
 
   startCleanup(): void {
@@ -61,6 +61,7 @@ export class GameService {
   }
 
   public createRoom(socket: Socket, payload: { playerName: string }): void {
+    if (this.roomManager.findRoomBySocketId(socket.id)) throw new Error('Bạn đã ở trong phòng.');
     const room = this.roomManager.createRoom();
     const token = randomUUID();
     const playerId = `player-${randomUUID()}`;
@@ -80,11 +81,12 @@ export class GameService {
       roomCode: room.roomCode,
       playerId,
       sessionToken: token,
-      players: room.getPlayers().map((p) => ({ playerId: p.playerId, name: p.name })),
+      players: this.roomSnapshot(room),
     });
   }
 
   public joinRoom(socket: Socket, payload: { roomCode: string; playerName: string }): void {
+    if (this.roomManager.findRoomBySocketId(socket.id)) throw new Error('Bạn đã ở trong phòng.');
     const room = this.roomManager.getRoom(payload.roomCode);
     const token = randomUUID();
     const playerId = `player-${randomUUID()}`;
@@ -100,7 +102,7 @@ export class GameService {
     socket.data.sessionToken = token;
     room.touch();
     socket.join(room.roomCode);
-    const players = room.getPlayers().map((p) => ({ playerId: p.playerId, name: p.name }));
+    const players = this.roomSnapshot(room);
     // Token chỉ gửi riêng cho người vừa join — không broadcast cho cả phòng.
     socket.emit(ServerEvents.PLAYER_JOINED, {
       roomCode: room.roomCode,
@@ -121,15 +123,15 @@ export class GameService {
   public selectDeck(socket: Socket, payload: { heroId: string; roomCode: string }): void {
     const room = this.roomManager.getRoom(payload.roomCode);
     // Chống double-start khi click hero nhiều lần.
-    if (room.isStarted()) {
+    if (room.isStarted() || room.isStarting()) {
       return;
     }
     const player = room.getPlayerBySession(this.tokenFrom(socket));
-    if (!player) {
+    if (!player || player.socketId !== socket.id) {
       throw new Error('Player không tồn tại trong room.');
     }
-    player.heroClass = payload.heroId;
-    player.ready = true;
+    if (!['MAGE', 'HUNTER', 'PALADIN', 'PRIEST', 'WARLOCK'].includes(payload.heroId)) throw new Error('Hero không hợp lệ.');
+    room.selectHero(player.playerId, payload.heroId);
     room.touch();
     this.io.to(room.roomCode).emit(ServerEvents.DECK_SELECTED, {
       playerId: player.playerId,
@@ -139,9 +141,7 @@ export class GameService {
     if (room.isFull() && room.getPlayers().every((p) => p.ready) && room.tryStart()) {
       void this.startGame(room).catch((error: unknown) => {
         room.cancelStart();
-        room.getPlayers().forEach((p) => {
-          p.ready = false;
-        });
+        room.clearReady();
         this.io.to(room.roomCode).emit(ServerEvents.ACTION_REJECTED, {
           code: 'GAME_START_FAILED',
           message: error instanceof Error ? error.message : 'Không thể khởi tạo trận.',
@@ -152,10 +152,8 @@ export class GameService {
 
   private async startGame(room: Room): Promise<void> {
     const gameId = randomUUID();
-    const heroes = await this.prisma.hero.findMany();
-    const cardCatalog = await this.prisma.card.findMany({
-      where: { collectible: true },
-    });
+    const [heroes, cardCatalog] = await Promise.all([this.catalog.heroes(), this.catalog.cards()]);
+    if (cardCatalog.length < DECK_SIZE) throw new Error('Catalog chưa đủ bài. Hãy kiểm tra seed.');
 
     const players = room.getPlayers();
     const first = players[0];
@@ -320,6 +318,10 @@ export class GameService {
   }
 
   public reconnect(socket: Socket, payload: { sessionToken: string }): void {
+    const existing = this.roomManager.findRoomBySocketId(socket.id);
+    if (existing && !existing.getPlayers().some(p => p.socketId === socket.id && p.sessionToken === payload.sessionToken)) {
+      throw new ReconnectFailedError();
+    }
     const room = this.roomManager.findRoomBySessionToken(payload.sessionToken);
     if (!room) {
       throw new ReconnectFailedError();
@@ -330,8 +332,9 @@ export class GameService {
     }
     if (player.socketId && player.socketId !== socket.id) {
       this.roomManager.unindexSocket(player.socketId);
-      this.io.sockets.sockets.get(player.socketId)?.leave(room.roomCode);
+      this.io.sockets.sockets.get(player.socketId)?.disconnect(true);
     }
+    room.bindSocket(player.playerId, socket.id);
     player.socketId = socket.id;
     socket.data.sessionToken = payload.sessionToken;
     this.roomManager.indexPlayer(room, player);
@@ -340,7 +343,7 @@ export class GameService {
     // Gửi lại danh sách phòng để client refresh ở lobby vẫn thấy đủ người.
     this.io.to(room.roomCode).emit(ServerEvents.PLAYER_JOINED, {
       roomCode: room.roomCode,
-      players: room.getPlayers().map((p) => ({ playerId: p.playerId, name: p.name })),
+      players: this.roomSnapshot(room),
     });
 
     const gameId = this.gameIndex.get(room.roomCode);
@@ -403,6 +406,10 @@ export class GameService {
   }
 
   // Che hand của đối thủ — mỗi viewer chỉ thấy bài của mình (server authoritative).
+  private roomSnapshot(room: Room) {
+    return room.getPlayers().map(p => ({ playerId: p.playerId, name: p.name, heroClass: p.heroClass, ready: p.ready, connected: p.socketId !== null }));
+  }
+
   private toStateFor(game: Game, viewerPlayerId: string): GameState {
     return {
       gameId: game.gameId,
@@ -413,6 +420,7 @@ export class GameService {
       players: game.getPlayers().map((p) => this.playerToState(p, p.id === viewerPlayerId)),
       winnerId: game.getWinnerId(),
       statusMessage: game.getStatusMessage(),
+      manualDrawUsed: game.hasManualDrawnThisTurn(),
     };
   }
 
@@ -426,6 +434,9 @@ export class GameService {
       mana: player.currentMana,
       maxMana: player.currentMaxMana,
       hero: this.heroToState(player.heroState),
+      damageDealt: player.damageDealt,
+      cardsPlayed: player.cardsPlayed,
+      minionsSummoned: player.minionsSummoned,
     };
   }
 
@@ -475,8 +486,8 @@ export class GameService {
     }
 
     if (game.isFinished()) {
-      if (!this.savedGames.has(game.gameId)) {
-        this.savedGames.add(game.gameId);
+      if (!this.savedGames.has(game.gameId) && !this.pendingSaves.has(game.gameId)) {
+        this.pendingSaves.add(game.gameId);
         void this.saveGame(game, room);
       }
       if (!this.gameOverEmitted.has(game.gameId)) {
@@ -488,7 +499,7 @@ export class GameService {
     }
   }
 
-  private async saveGame(game: Game, room: Room): Promise<void> {
+  private async saveGame(game: Game, room: Room, attempt = 0): Promise<void> {
     try {
       await this.gameRepository.recordFinishedGame({
         gameId: game.gameId,
@@ -500,8 +511,16 @@ export class GameService {
         })),
         winnerId: game.getWinnerId(),
       });
-    } catch {
-      // Lịch sử fail không được làm sập game.
+      if (this.gameIndex.get(room.roomCode) === game.gameId) this.savedGames.add(game.gameId);
+      this.pendingSaves.delete(game.gameId);
+    } catch (error) {
+      console.error('Không lưu được kết quả', game.gameId, error instanceof Error ? error.message : error);
+      if (attempt < 2) {
+        const timer = setTimeout(() => { void this.saveGame(game, room, attempt + 1); }, 1000 * (attempt + 1));
+        timer.unref();
+      } else {
+        this.pendingSaves.delete(game.gameId);
+      }
     }
   }
 
@@ -512,8 +531,9 @@ export class GameService {
 
   private playerIdFromGame(game: Game, socket: Socket): string {
     const room = this.roomManager.getRoom(game.roomCode);
+    if (this.gameIndex.get(room.roomCode) !== game.gameId) throw new Error('Trận này không còn hoạt động.');
     const roomPlayer = room.getPlayerBySession(this.tokenFrom(socket));
-    if (!roomPlayer) {
+    if (!roomPlayer || roomPlayer.socketId !== socket.id) {
       throw new Error('Player không tồn tại trong room.');
     }
     return roomPlayer.playerId;

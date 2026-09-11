@@ -17,12 +17,16 @@ export class AoeDamageEffect implements ICardEffect {
   constructor(public readonly amount: number) {}
 
   execute(context: EffectContext): void {
-    context.opponent.getBoard().forEach((m) => m.takeDamage(this.amount));
+    const targets = context.areaTargets ?? context.opponent.getBoard();
+    targets.forEach(m => {
+      const actual = m.takeDamage(this.amount);
+      if (m.ownerId === context.opponent.id) context.player.recordDamage(actual);
+    });
   }
 }
 
 export class DestroyEffect implements ICardEffect {
-  constructor(public readonly minAttack = 5) {}
+  constructor(public readonly minAttack = 0) {}
 
   execute(context: EffectContext): void {
     const target = context.target as Minion | null;
@@ -32,17 +36,7 @@ export class DestroyEffect implements ICardEffect {
     if (target.currentAttack < this.minAttack) {
       return;
     }
-    target.takeDamage(target.currentHealth);
-  }
-}
-
-export class DestroyUntargetedEffect implements ICardEffect {
-  execute(context: EffectContext): void {
-    const target = context.target as Minion | null;
-    if (!target) {
-      return;
-    }
-    target.takeDamage(target.currentHealth);
+    target.takeDamage(Math.max(0, target.currentHealth));
   }
 }
 
@@ -63,11 +57,10 @@ export class TransformEffect implements ICardEffect {
     if (!target) {
       return;
     }
-    // Polymorph — giết target rồi summon Sheep 1/1 cho chủ sở hữu.
-    target.takeDamage(target.currentHealth);
+    // Thay tại chỗ: không cần slot trống, không tăng số lần summon.
     const owner =
       target.ownerId === context.player.id ? context.player : context.opponent;
-    owner.summonMinion(
+    owner.replaceMinion(target.instanceId,
       new MinionClass(
         makeUniqueCardId(),
         SHEEP_TOKEN.id,

@@ -9,7 +9,7 @@ export class BuffAttackEffect implements ICardEffect {
     const target = context.target as Minion | null;
     if (!target) {
       // Không có target → buff toàn bộ friendly minions.
-      context.player.getBoard().forEach((m) => m.modifyAttack(this.amount));
+      (context.areaTargets ?? context.player.getBoard()).forEach((m) => m.modifyAttack(this.amount));
       return;
     }
     target.modifyAttack(this.amount);
@@ -22,7 +22,7 @@ export class BuffHealthEffect implements ICardEffect {
   execute(context: EffectContext): void {
     const target = context.target as Minion | null;
     if (!target) {
-      context.player.getBoard().forEach((m) => m.modifyHealth(this.amount));
+      (context.areaTargets ?? context.player.getBoard()).forEach((m) => m.modifyHealth(this.amount));
       return;
     }
     target.modifyHealth(this.amount);

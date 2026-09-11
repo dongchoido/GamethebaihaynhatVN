@@ -100,11 +100,14 @@ Luật chi tiết: `docs/GAME_RULES.md`.
 npm run dev          # chạy server + client
 npm run build        # build shared + server + client production
 npm start            # chạy production server tại cổng 3000
-npm run tunnel       # tạo link HTTPS tạm tới localhost:3000
+npm run tunnel       # tạo link HTTPS tạm tới localhost:3000 (cần cloudflared)
+npm run verify       # build + unit + integration (database thử riêng)
 npm test             # unit test GameEngine
-npm run test:e2e     # test 2 người chơi qua socket thật (cần server chạy)
+npm run test:integration  # integration với database thử riêng (migrate/seed/tái đấu/cleanup)
+npm run test:e2e     # test 2 người chơi qua socket thật (cần server chạy, database thật)
 npm run test:e2e-neg # test các case lỗi (sai mã phòng, phòng đầy...)
-npm run build        # build shared + server
+node e2e-tabs.cjs        # test 2 tab trình duyệt (cần server + client dev chạy)
+node e2e-connection.cjs  # test reconnect/mất mạng (cần server chạy)
 ```
 
 Trong `client/`: `npm run dev` (chỉ client), `npm run build`, `npx tsc --noEmit -p tsconfig.json` (check type).

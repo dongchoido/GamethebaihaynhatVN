@@ -6,7 +6,7 @@ export class Deck {
   private cards: CardDefinition[];
 
   constructor(cards: CardDefinition[]) {
-    this.cards = cards.slice(); // copy — không để caller giữ lượt.
+    this.cards = structuredClone(cards);
     this.shuffle();
   }
 
@@ -31,7 +31,12 @@ export class Deck {
   }
 
   returnToBottom(card: CardDefinition): void {
-    this.cards.push(card);
+    this.cards.push(structuredClone(card));
+  }
+
+  checkpoint(): () => void {
+    const cards = structuredClone(this.cards);
+    return () => { this.cards = structuredClone(cards); };
   }
 
   // Rút lá rẻ nhất trong deck (dùng cho opening-hand guarantee).

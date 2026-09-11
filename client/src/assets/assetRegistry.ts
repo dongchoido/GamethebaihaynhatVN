@@ -94,7 +94,6 @@ export function listHeroAssets(): HeroAsset[] {
 export const UI_IMAGE = {
   playground: 'assets/images/design/ArenaWood.jpg',
   surrender: 'assets/images/design/SurrenderButton.png',
-  boardBackground: 'assets/images/design/Background.jpg',
   startBackground: 'assets/images/design/StartBG.jpg',
   shopBackground: 'assets/images/design/ShopBackground.jpg',
   cardBack: 'assets/images/design/CardViewBack.png',
@@ -104,12 +103,6 @@ export const UI_IMAGE = {
   manaCrystalDark: 'assets/images/design/manacrystal_dark.png',
   healthBadge: 'assets/images/design/HealthBG.png',
   endTurn: 'assets/images/design/EndTurnButton.png',
-  messageBar: 'assets/images/design/MessageBar.png',
-  selectionPlay: 'assets/images/design/SelectionPlay.png',
-  versus: 'assets/images/design/vs.png',
-  wait: 'assets/images/design/wait.png',
-  startButton: 'assets/images/design/start.png',
-  shopButton: 'assets/images/design/shop.png',
 } as const;
 
 export const SOUND = {

@@ -24,15 +24,24 @@ export class Hero {
     return MAX_HERO_HEALTH;
   }
 
-  takeDamage(amount: number): void {
-    this.health -= amount;
+  takeDamage(amount: number): number {
+    if (!Number.isFinite(amount) || amount < 0) throw new Error('Damage không hợp lệ.');
+    const actual = Math.min(Math.max(0, this.health), amount);
+    this.health -= actual;
+    return actual;
   }
 
   heal(amount: number): void {
+    if (!Number.isFinite(amount) || amount < 0) throw new Error('Heal không hợp lệ.');
     this.health = Math.min(this.maxHealth, this.health + amount);
   }
 
   isDead(): boolean {
     return this.health <= 0;
+  }
+
+  checkpoint(): () => void {
+    const health = this.health;
+    return () => { this.health = health; };
   }
 }

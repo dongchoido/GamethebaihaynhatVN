@@ -21,7 +21,7 @@ export interface RoomCreatedResponse {
   roomCode: string;
   playerId: string;
   sessionToken: string;
-  players: { playerId: string; name: string }[];
+  players: { playerId: string; name: string; heroClass?: string | null; ready?: boolean; connected?: boolean }[];
 }
 
 export interface PlayerJoinedResponse {
@@ -29,7 +29,7 @@ export interface PlayerJoinedResponse {
   // Chỉ có khi event gửi riêng cho người vừa join (không broadcast token cho cả phòng).
   playerId?: string;
   sessionToken?: string;
-  players: { playerId: string; name: string }[];
+  players: { playerId: string; name: string; heroClass?: string | null; ready?: boolean; connected?: boolean }[];
 }
 
 export interface RoomReadyResponse {
@@ -63,7 +63,7 @@ export interface TurnChangedResponse {
 }
 
 export interface GameOverResponse {
-  winnerId: string;
+  winnerId: string | null;
 }
 
 export interface GameStatePayload {

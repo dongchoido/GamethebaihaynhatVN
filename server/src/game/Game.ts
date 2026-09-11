@@ -18,6 +18,7 @@ export class Game {
   ) {}
 
   start(): void {
+    if (this.status !== GameStatus.WAITING) throw new Error('Trận đã bắt đầu.');
     const firstPlayer = this.players[0];
     const secondPlayer = this.players[1];
     if (!firstPlayer || !secondPlayer) {
@@ -79,11 +80,7 @@ export class Game {
   }
 
   getPlayers(): Readonly<Player[]> {
-    return this.players;
-  }
-
-  getActivePlayer(): Player {
-    return this.getPlayerById(this.activePlayerId);
+    return this.players.slice();
   }
 
   getOpponent(): Player {
@@ -99,6 +96,7 @@ export class Game {
   }
 
   resign(playerId: string): void {
+    this.getPlayerById(playerId);
     if (this.isFinished()) {
       return;
     }
@@ -134,11 +132,6 @@ export class Game {
     if (options.skipDraw) {
       return;
     }
-    try {
-      const card = player.drawCard();
-      player.addToHand(card);
-    } catch {
-      // Fatigue — deck hết (rule HS: không draw khi empty)
-    }
+    if (player.deckSize > 0) player.addToHand(player.drawCard());
   }
 }

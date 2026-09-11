@@ -87,6 +87,10 @@ class SocketService {
     this.getSocket().emit(ClientEvents.CONCEDE, { gameId });
   }
 
+  clearSession(): void {
+    if (this.socket) this.socket.auth = {};
+  }
+
   rematch(gameId: string): void {
     this.getSocket().emit(ClientEvents.REMATCH, { gameId });
   }

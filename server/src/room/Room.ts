@@ -23,7 +23,7 @@ export class Room {
     if (this.players.length >= 2) {
       throw new RoomFullError();
     }
-    this.players.push(player);
+    this.players.push({ ...player });
     this.touch();
   }
 
@@ -37,11 +37,31 @@ export class Room {
   }
 
   getPlayers(): Readonly<RoomPlayer[]> {
-    return this.players;
+    return this.players.map(p => ({ ...p }));
   }
 
   getPlayerBySession(sessionToken: string): RoomPlayer | null {
-    return this.players.find((p) => p.sessionToken === sessionToken) ?? null;
+    const player = this.players.find((p) => p.sessionToken === sessionToken);
+    return player ? { ...player } : null;
+  }
+
+  selectHero(playerId: string, heroClass: string): void {
+    const player = this.players.find(p => p.playerId === playerId);
+    if (!player) throw new Error('Player không tồn tại.');
+    player.heroClass = heroClass;
+    player.ready = true;
+    this.touch();
+  }
+
+  bindSocket(playerId: string, socketId: string): void {
+    const player = this.players.find(p => p.playerId === playerId);
+    if (!player) throw new Error('Player không tồn tại.');
+    player.socketId = socketId;
+    this.touch();
+  }
+
+  clearReady(): void {
+    this.players.forEach(p => { p.ready = false; });
   }
 
   count(): number {
