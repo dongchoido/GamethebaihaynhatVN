@@ -15,6 +15,9 @@ client chỉ gửi action, mọi damage/mana/draw/HP do server quyết.
 - npm >= 9
 
 ## Cách chạy game (lần đầu)
+
+Trên Windows PowerShell, nếu `npm` báo lỗi tìm `AppData\Roaming\npm\node_modules\npm\bin\npm-cli.js`, dùng `npm.cmd` thay cho `npm` trong các lệnh bên dưới. Môi trường hiện đã có Node.js và npm chính thức tại `C:\Program Files\nodejs`.
+
 ```bash
 # 1. Cài dependencies (từ thư mục gốc project)
 npm install
@@ -46,11 +49,58 @@ npm run dev
    - Nút hero power, nút END TURN, Đầu hàng
 5. Hero nào hết HP trước thì thua. Kết quả lưu vào database.
 
+## Cách chơi giữa 2 máy cùng Wi-Fi/LAN
+
+Máy A chạy server và không được tắt trong lúc chơi. Máy B chỉ cần trình duyệt, không cần cài Node.js hay database.
+
+```bash
+# Chạy từ thư mục gốc project trên máy A
+npm run dev:lan
+```
+
+Trên máy A, chạy `ipconfig` và lấy địa chỉ IPv4 của card Wi-Fi hoặc Ethernet, ví dụ `192.168.1.50`. Cả hai máy mở:
+
+```text
+http://192.168.1.50:5173
+```
+
+Máy A chọn **Tạo phòng**, máy B nhập tên và mã phòng rồi chọn **Tham gia**.
+
+Nếu máy B không mở được trang, trên máy A kiểm tra Windows Firewall và cho phép TCP port 5173 trong mạng **Private**. Có thể tạo rule bằng PowerShell chạy với quyền Administrator:
+
+```powershell
+New-NetFirewallRule -DisplayName "CoinCard LAN 5173" -Direction Inbound -Protocol TCP -LocalPort 5173 -Action Allow -Profile Private
+```
+
+Không mở port 3000 cho máy khác; Vite proxy Socket.IO tới backend `127.0.0.1:3000` trên máy A. Nếu hai thiết bị dùng Wi-Fi khách hoặc router bật AP/client isolation, chúng không thể kết nối trực tiếp dù cùng tên mạng; hãy chuyển sang mạng Private thông thường.
+
+## Chơi khác mạng bằng link Internet tạm
+
+Để chơi qua Wi-Fi/4G khác nhau, dùng bản production một cổng và Cloudflare Quick Tunnel. Máy chủ vẫn giữ database và game state; máy khách chỉ cần trình duyệt.
+
+```bash
+# Lần đầu hoặc sau khi sửa code
+npm run build
+
+# Terminal 1: chạy server + giao diện production
+npm start
+
+# Terminal 2: tạo link HTTPS tạm
+npm run tunnel
+```
+
+Gửi link `https://....trycloudflare.com` được in ở Terminal 2 cho người chơi còn lại. Cả hai mở cùng link đó. Không mở cổng 3000/5173 trên router; máy chủ phải giữ cả hai terminal hoạt động. Link Quick Tunnel là link tạm và thường đổi sau khi chạy lại tunnel.
+
+`npm start` cần file `server/.env` được tạo từ `server/.env.example`, database đã migrate/seed và client đã build. `cloudflared` phải được cài riêng trên máy chủ và có trong PATH.
+
 Luật chi tiết: `docs/GAME_RULES.md`.
 
 ## Scripts hay dùng
 ```bash
 npm run dev          # chạy server + client
+npm run build        # build shared + server + client production
+npm start            # chạy production server tại cổng 3000
+npm run tunnel       # tạo link HTTPS tạm tới localhost:3000
 npm test             # unit test GameEngine
 npm run test:e2e     # test 2 người chơi qua socket thật (cần server chạy)
 npm run test:e2e-neg # test các case lỗi (sai mã phòng, phòng đầy...)

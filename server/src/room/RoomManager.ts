@@ -3,6 +3,8 @@ import { RoomNotFoundError } from '../game/errors.js';
 
 export class RoomManager {
   private rooms = new Map<string, Room>();
+  private sockets = new Map<string, Room>();
+  private sessions = new Map<string, Room>();
 
   createRoom(): Room {
     const roomCode = this.generateCode();
@@ -21,21 +23,34 @@ export class RoomManager {
   }
 
   findRoomBySocketId(socketId: string): Room | null {
-    for (const room of this.rooms.values()) {
-      if (room.getPlayers().some((p) => p.socketId === socketId)) {
-        return room;
-      }
-    }
-    return null;
+    return this.sockets.get(socketId) ?? null;
   }
 
   findRoomBySessionToken(sessionToken: string): Room | null {
-    for (const room of this.rooms.values()) {
-      if (room.getPlayerBySession(sessionToken)) {
-        return room;
-      }
-    }
-    return null;
+    return this.sessions.get(sessionToken) ?? null;
+  }
+
+  indexPlayer(room: Room, player: { socketId: string | null; sessionToken: string }): void {
+    if (player.socketId) this.sockets.set(player.socketId, room);
+    this.sessions.set(player.sessionToken, room);
+  }
+
+  unindexSocket(socketId: string): void {
+    this.sockets.delete(socketId);
+  }
+
+  listRooms(): Room[] {
+    return [...this.rooms.values()];
+  }
+
+  deleteRoom(roomCode: string): void {
+    const room = this.rooms.get(roomCode.toUpperCase().trim());
+    if (!room) return;
+    room.getPlayers().forEach((player) => {
+      if (player.socketId) this.sockets.delete(player.socketId);
+      this.sessions.delete(player.sessionToken);
+    });
+    this.rooms.delete(room.roomCode);
   }
 
   private generateCode(): string {

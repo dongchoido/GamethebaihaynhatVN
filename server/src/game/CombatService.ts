@@ -1,8 +1,9 @@
 import type { Player } from './Player.js';
-import { InvalidTargetError } from './errors.js';
+import { InvalidTargetError, TauntRequiredError } from './errors.js';
 
 /**
- * Chiến đấu nội chung — minion→hero hoặc minion↔minion (đamheo băc).
+ * Chiến đấu — minion của người đang đánh chỉ được đánh sang phe địch.
+ * Validate toàn bộ trước, trừ lượt attacker sau cùng.
  */
 export function resolveAttack(
   player: Player,
@@ -10,27 +11,39 @@ export function resolveAttack(
   attackerId: string,
   targetId: string,
 ): void {
-  const attacker =
-    player.findMinion(attackerId) ?? opponent.findMinion(attackerId);
+  const attacker = player.findMinion(attackerId);
   if (!attacker) {
-    throw new InvalidTargetError('Attacker không tồn tại.');
+    throw new InvalidTargetError('Attacker không tồn tại hoặc không phải quái của bạn.');
+  }
+  if (attacker.ownerId !== player.id) {
+    throw new InvalidTargetError('Không được dùng quái của đối thủ.');
   }
   if (!attacker.canAttack) {
     throw new InvalidTargetError('Minion đã hành động / summoning sickness.');
   }
 
-  attacker.markAsAttacked();
+  const taunts = opponent.getBoard().filter((m) => m.hasTaunt && !m.isDead());
 
-  if (targetId === player.id || targetId === opponent.id) {
-    const targetHero = targetId === opponent.id ? opponent : player;
-    targetHero.heroState.takeDamage(attacker.currentAttack);
+  if (targetId === opponent.id) {
+    if (taunts.length > 0) {
+      throw new TauntRequiredError();
+    }
+    opponent.heroState.takeDamage(attacker.currentAttack);
+    attacker.markAsAttacked();
     return;
   }
+  if (targetId === player.id) {
+    throw new InvalidTargetError('Không được tấn công hero của chính mình.');
+  }
 
-  const defender = player.findMinion(targetId) ?? opponent.findMinion(targetId);
+  const defender = opponent.findMinion(targetId);
   if (!defender) {
-    throw new InvalidTargetError('Target không tồn tại.');
+    throw new InvalidTargetError('Chỉ được tấn công quái của đối thủ.');
+  }
+  if (taunts.length > 0 && !defender.hasTaunt) {
+    throw new TauntRequiredError();
   }
   attacker.takeDamage(defender.currentAttack);
   defender.takeDamage(attacker.currentAttack);
+  attacker.markAsAttacked();
 }

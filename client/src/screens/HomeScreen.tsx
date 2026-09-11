@@ -108,32 +108,61 @@ export function HomeScreen() {
 
   return (
     <div className="home-screen" style={{ backgroundImage: `url(${resolveAsset(UI_IMAGE.startBackground)})` }}>
-      <h1 className="game-title">CoinCard</h1>
-      <p className="game-subtitle">Card battle 2 người chơi</p>
-      <div className="home-form">
-        <input
-          className="text-input"
-          placeholder="Tên của bạn"
-          value={playerName}
-          onChange={(e) => setPlayerName(e.target.value)}
-          maxLength={24}
-        />
-        <button type="button" className="btn-primary" onClick={handleCreate}>
-          Tạo phòng
-        </button>
-        <div className="join-row">
-          <input
-            className="text-input"
-            placeholder="Mã phòng (vd A8F3K2)"
-            value={roomCode}
-            onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
-            maxLength={6}
-          />
-          <button type="button" className="btn-secondary" onClick={handleJoin}>
-            Tham gia
+      <div className="home-panel">
+        <span className="home-corner tl" aria-hidden="true" />
+        <span className="home-corner tr" aria-hidden="true" />
+        <span className="home-corner bl" aria-hidden="true" />
+        <span className="home-corner br" aria-hidden="true" />
+        <span className="home-gem top" aria-hidden="true" />
+        <p className="home-tagline">Card battle 2 người chơi</p>
+        <div className="home-form">
+          <label className="home-field">
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+              <circle cx="12" cy="8" r="4" fill="currentColor" />
+              <path d="M4 21c0-4 3.6-7 8-7s8 3 8 7v1H4v-1z" fill="currentColor" />
+            </svg>
+            <input
+              className="text-input"
+              placeholder="Tên của bạn"
+              value={playerName}
+              onChange={(e) => setPlayerName(e.target.value)}
+              maxLength={24}
+            />
+          </label>
+          <button type="button" className="btn-primary home-create" onClick={handleCreate}>
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+              <path d="M4 4l7 7-2.5 2.5L4 9V4zm16 0v5l-4.5 4.5L13 11l7-7zM4 4h2v2H4z" fill="currentColor" />
+              <path d="M11 13l-4 7 2 1 4-6-2-2zm2 0l4 7-2 1-4-6 2-2z" fill="currentColor" />
+            </svg>
+            Tạo phòng
           </button>
+          <div className="join-row">
+            <label className="home-field">
+              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                <circle cx="8" cy="12" r="4" fill="none" stroke="currentColor" strokeWidth="2" />
+                <path d="M11 12h9v2h-2v2h-2v-2h-2v2h-2v-2z" fill="currentColor" />
+              </svg>
+              <input
+                className="text-input"
+                placeholder="Mã phòng (vd A8F3K2)"
+                value={roomCode}
+                onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
+                maxLength={6}
+              />
+            </label>
+            <button type="button" className="btn-secondary home-join" onClick={handleJoin}>
+              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                <circle cx="9" cy="8" r="3.2" fill="currentColor" />
+                <path d="M3.5 19c0-3.4 2.5-5.5 5.5-5.5s5.5 2.1 5.5 5.5v1h-11v-1z" fill="currentColor" />
+                <circle cx="16.5" cy="9" r="2.6" fill="currentColor" opacity="0.75" />
+                <path d="M15.5 13.7c2.9 0.2 5 2.2 5 5.3v1h-4v-1c0-2.3-0.3-3.9-1-5.3z" fill="currentColor" opacity="0.75" />
+              </svg>
+              Tham gia
+            </button>
+          </div>
+          {lastError && <p className="error-text">{lastError}</p>}
         </div>
-        {lastError && <p className="error-text">{lastError}</p>}
+        <span className="home-gem bottom" aria-hidden="true" />
       </div>
     </div>
   );

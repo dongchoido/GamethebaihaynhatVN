@@ -139,6 +139,11 @@ export class Player {
     this.hand.push(card);
   }
 
+  /** Tìm bài trong tay mà không lấy ra — dùng cho validate-trước-mutation. */
+  findCardInHand(instanceId: string): CardDefinition | null {
+    return this.hand.find((c) => c.id === instanceId) ?? null;
+  }
+
   removeFromHand(instanceId: string): CardDefinition {
     const index = this.hand.findIndex((c) => c.id === instanceId);
     if (index === -1) {

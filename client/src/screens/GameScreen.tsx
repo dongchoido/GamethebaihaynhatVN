@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   GameStatus,
   ServerEvents,
+  effectNeedsTarget,
   type ActionRejectedResponse,
   type CardDefinition,
   type GameOverResponse,
@@ -17,25 +18,20 @@ import { ManaBar } from '../components/ManaBar';
 import { DebugPanel } from '../components/DebugPanel';
 import { playSound, resolveAsset, SOUND, UI_IMAGE } from '../assets/assetRegistry';
 
-// Target đơn lẻ mà spell cần client chọn (còn lại server tự resolve).
-const TARGETED_SPELL_TARGETS = new Set([
-  'ENEMY_CHARACTER',
-  'ANY_CHARACTER',
-  'ENEMY_MINION',
-  'FRIENDLY_MINION',
-  'ANY_MINION',
-  'ENEMY_HERO',
-]);
-
+// Dùng chung helper với server — chỉ effect cần chọn tay mới highlight.
+// Effect tự resolve (HEAL hero, AOE...) không góp id vào để khỏi highlight sai.
 function spellNeedsTarget(card: CardDefinition): boolean {
   return (
-    card.type === 'SPELL' && card.effects.some((e) => TARGETED_SPELL_TARGETS.has(e.target))
+    card.type === 'SPELL' && card.effects.some((e) => effectNeedsTarget(e.target))
   );
 }
 
 function validTargetIds(card: CardDefinition, myId: string, oppId: string, myBoard: string[], oppBoard: string[]): Set<string> {
   const ids = new Set<string>();
   for (const effect of card.effects) {
+    if (!effectNeedsTarget(effect.target)) {
+      continue;
+    }
     switch (effect.target) {
       case 'ENEMY_CHARACTER':
         oppBoard.forEach((id) => ids.add(id));
@@ -60,6 +56,9 @@ function validTargetIds(card: CardDefinition, myId: string, oppId: string, myBoa
       case 'ENEMY_HERO':
         ids.add(oppId);
         break;
+      case 'SELF':
+        ids.add(myId);
+        break;
       default:
         break;
     }
@@ -72,7 +71,18 @@ export function GameScreen() {
   const { session, gameState, setGameState, setPhase, setLastError, lastError, reset } = useGameStore();
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [selectedAttackerId, setSelectedAttackerId] = useState<string | null>(null);
+  const [endTurnPending, setEndTurnPending] = useState(false);
+  const [drawPending, setDrawPending] = useState(false);
   const prevTurnRef = useRef<number>(0);
+  const MAX_HAND = 6;
+
+  // Preload ảnh nút để bấm là hiện ngay, không nháy.
+  useEffect(() => {
+    for (const key of [UI_IMAGE.endTurn, UI_IMAGE.surrender]) {
+      const img = new Image();
+      img.src = resolveAsset(key);
+    }
+  }, []);
 
   useEffect(() => {
     const socket = socketService.getSocket();
@@ -84,8 +94,13 @@ export function GameScreen() {
         }
       }
       setGameState(next);
+      if (next.status === GameStatus.FINISHED) {
+        setPhase('over');
+      }
       setSelectedCardId(null);
       setSelectedAttackerId(null);
+      setEndTurnPending(false);
+      setDrawPending(false);
     };
     const onRejected = (res: ActionRejectedResponse) => {
       // Game trên server đã mất → về home sạch thay vì kẹt.
@@ -94,6 +109,8 @@ export function GameScreen() {
         return;
       }
       setLastError(`${res.code}: ${res.message}`);
+      setEndTurnPending(false);
+      setDrawPending(false);
     };
     const onTurnChanged = (_res: TurnChangedResponse) => {
       // statusMessage trong state đã đủ; giữ handler để log/debug.
@@ -164,13 +181,20 @@ export function GameScreen() {
     setSelectedCardId(card.id); // spell cần target → đợi chọn target
   };
 
+  const oppHasTaunt = oppPlayer?.board.some((m) => m.hasTaunt) ?? false;
+
   const handleMinionClick = (instanceId: string, isMine: boolean) => {
     setLastError(null);
     if (!isMyTurn) return;
-    // Ưu tiên 1: đang chọn spell cần target → target là minion này
-    if (selectedCard && targetIds.has(instanceId)) {
-      sendPlayCard(selectedCard.id, instanceId);
-      return;
+    // Đang chọn spell: đúng target thì cast, click sai chỗ thì hủy chọn
+    // (không để kẹt vừa chọn spell vừa chọn attacker).
+    if (selectedCard) {
+      if (targetIds.has(instanceId)) {
+        sendPlayCard(selectedCard.id, instanceId);
+      } else {
+        setSelectedCardId(null);
+        if (!isMine) return;
+      }
     }
     if (isMine) {
       // Ưu tiên 2: chọn attacker của mình
@@ -201,6 +225,10 @@ export function GameScreen() {
       return;
     }
     if (!isMine && selectedAttackerId) {
+      if (oppHasTaunt) {
+        setLastError('TAUNT_REQUIRED: Phải tấn công quái Taunt trước.');
+        return;
+      }
       socketService.attack({
         gameId: gameState.gameId,
         attackerId: selectedAttackerId,
@@ -212,13 +240,22 @@ export function GameScreen() {
   };
 
   const handleEndTurn = () => {
-    if (!isMyTurn) return;
+    if (!isMyTurn || endTurnPending) return;
+    setEndTurnPending(true);
     socketService.endTurn(gameState.gameId);
   };
 
   const handleHeroPower = () => {
     if (!isMyTurn) return;
     socketService.useHeroPower(gameState.gameId);
+    playSound(SOUND.play);
+  };
+
+  const handleDraw = () => {
+    if (!isMyTurn || drawPending) return;
+    setLastError(null);
+    setDrawPending(true);
+    socketService.drawCard(gameState.gameId);
     playSound(SOUND.play);
   };
 
@@ -229,7 +266,7 @@ export function GameScreen() {
   const oppHandBacks = Array.from({ length: oppPlayer.handCount }, (_, i) => i);
 
   return (
-    <div className="game-screen" style={{ backgroundImage: `url(${resolveAsset(UI_IMAGE.playground)})` }}>
+    <div className="game-screen" style={{ backgroundImage: `radial-gradient(ellipse at center, rgba(33, 20, 12, 0.28), rgba(12, 8, 6, 0.88)), url(${resolveAsset(UI_IMAGE.playground)})` }}>
       {/* Đối thủ */}
       <div className="opponent-area">
         <div className="opponent-hand">
@@ -240,7 +277,7 @@ export function GameScreen() {
         <HeroView
           hero={oppPlayer.hero}
           powerUsable={false}
-          targetable={isMyTurn && (selectedAttackerId !== null || (selectedCard !== null && targetIds.has(oppPlayer.playerId)))}
+          targetable={isMyTurn && ((selectedAttackerId !== null && !oppHasTaunt) || (selectedCard !== null && targetIds.has(oppPlayer.playerId)))}
           onHeroClick={() => handleHeroClick(oppPlayer.playerId, false)}
           onPowerClick={() => undefined}
         />
@@ -252,7 +289,7 @@ export function GameScreen() {
             minion={m}
             selectable={false}
             selected={false}
-            targetable={isMyTurn && (selectedAttackerId !== null || targetIds.has(m.instanceId))}
+            targetable={isMyTurn && ((selectedAttackerId !== null && (!oppHasTaunt || m.hasTaunt)) || targetIds.has(m.instanceId))}
             onSelect={() => handleMinionClick(m.instanceId, false)}
           />
         ))}
@@ -260,8 +297,8 @@ export function GameScreen() {
       </div>
 
       {/* Thanh trạng thái */}
-      <div className="message-bar" style={{ backgroundImage: `url(${resolveAsset(UI_IMAGE.messageBar)})` }}>
-        <span>{gameState.statusMessage || (isMyTurn ? 'Lượt của bạn' : 'Lượt đối thủ')}</span>
+      <div className="message-bar">
+        <span className="message-pill">{gameState.statusMessage || (isMyTurn ? 'Lượt của bạn' : 'Lượt đối thủ')}</span>
         {lastError && <span className="error-text">{lastError}</span>}
       </div>
 
@@ -280,35 +317,52 @@ export function GameScreen() {
         {myPlayer.board.length === 0 && <span className="board-empty">—</span>}
       </div>
       <div className="my-area">
-        <div className="my-hand">
-          {myPlayer.hand.map((card) => (
-            <CardView
-              key={card.id}
-              card={card}
-              playable={isMyTurn && card.manaCost <= myPlayer.mana}
-              selected={selectedCardId === card.id}
-              onSelect={() => handleHandCardClick(card)}
-            />
-          ))}
+        <div className="my-hand-wrap">
+          <div className="hand-count">{myPlayer.hand.length}/{MAX_HAND}</div>
+          <div className="my-hand">
+            {myPlayer.hand.map((card) => (
+              <CardView
+                key={card.id}
+                card={card}
+                playable={isMyTurn && card.manaCost <= myPlayer.mana}
+                selected={selectedCardId === card.id}
+                onSelect={() => handleHandCardClick(card)}
+              />
+            ))}
+          </div>
         </div>
-        <HeroView
-          hero={myPlayer.hero}
-          powerUsable={isMyTurn && myPlayer.mana >= myPlayer.hero.powerCost}
-          targetable={false}
-          onHeroClick={() => undefined}
-          onPowerClick={handleHeroPower}
-        />
-        <ManaBar mana={myPlayer.mana} maxMana={myPlayer.maxMana} />
-        <button type="button" className="end-turn-btn" onClick={handleEndTurn} disabled={!isMyTurn} title="End turn">
-          <img
-            src={resolveAsset(isMyTurn ? UI_IMAGE.endTurn : UI_IMAGE.endTurnDisabled)}
-            alt="End turn"
-            draggable={false}
+        <div className="my-hero-mana">
+          <HeroView
+            hero={myPlayer.hero}
+            powerUsable={isMyTurn && myPlayer.mana >= myPlayer.hero.powerCost}
+            targetable={isMyTurn && selectedCard !== null && targetIds.has(myPlayer.playerId)}
+            onHeroClick={() => handleHeroClick(myPlayer.playerId, true)}
+            onPowerClick={handleHeroPower}
           />
-        </button>
-        <button type="button" className="btn-concede" onClick={handleConcede}>
-          Đầu hàng
-        </button>
+          <ManaBar mana={myPlayer.mana} maxMana={myPlayer.maxMana} />
+        </div>
+        <div className="my-actions">
+          <button
+            type="button"
+            className="deck-pile"
+            onClick={handleDraw}
+            disabled={!isMyTurn || drawPending || myPlayer.hand.length >= MAX_HAND || myPlayer.deckCount <= 0}
+            title={myPlayer.hand.length >= MAX_HAND ? 'Tay đầy (6/6)' : 'Rút 1 lá (mỗi turn 1 lần)'}
+          >
+            <img src={resolveAsset(UI_IMAGE.cardBack)} alt="Bộ bài" draggable={false} />
+            <span className="deck-count">{myPlayer.deckCount}</span>
+          </button>
+          <button type="button" className="end-turn-btn" onClick={handleEndTurn} disabled={!isMyTurn || endTurnPending} title="End turn">
+            <img
+              src={resolveAsset(UI_IMAGE.endTurn)}
+              alt="End turn"
+              draggable={false}
+            />
+          </button>
+          <button type="button" className="btn-concede" onClick={handleConcede} title="Đầu hàng">
+            <img src={resolveAsset(UI_IMAGE.surrender)} alt="Đầu hàng" draggable={false} />
+          </button>
+        </div>
       </div>
       <DebugPanel gameState={gameState} />
     </div>

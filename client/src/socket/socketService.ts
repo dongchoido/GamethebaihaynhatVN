@@ -42,17 +42,13 @@ class SocketService {
     return this.socket?.connected ?? false;
   }
 
-  // Server đọc sessionToken từ handshake.auth — gắn token rồi connect lại.
-  // Sự kiện 'connect' (đăng ký trong connect()) sẽ tự gửi RECONNECT_GAME.
-  // Listeners đã đăng ký được giữ nguyên khi dùng disconnect().connect().
+  // Server đã gắn session vào socket khi tạo/join phòng.
+  // Chỉ lưu auth cho lần reconnect thật, không ngắt kết nối đang chơi.
   setSessionToken(token: string): void {
     if (!this.socket) {
       return;
     }
     this.socket.auth = { sessionToken: token };
-    if (this.socket.connected) {
-      this.socket.disconnect().connect();
-    }
   }
 
   createRoom(playerName: string): void {
@@ -83,8 +79,16 @@ class SocketService {
     this.getSocket().emit(ClientEvents.USE_HERO_POWER, { gameId });
   }
 
+  drawCard(gameId: string): void {
+    this.getSocket().emit(ClientEvents.DRAW_CARD, { gameId });
+  }
+
   concede(gameId: string): void {
     this.getSocket().emit(ClientEvents.CONCEDE, { gameId });
+  }
+
+  rematch(gameId: string): void {
+    this.getSocket().emit(ClientEvents.REMATCH, { gameId });
   }
 
   reconnectGame(payload: ReconnectPayload): void {

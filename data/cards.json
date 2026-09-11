@@ -10,7 +10,10 @@
     "heroClass": "NEUTRAL",
     "imagePath": "assets/images/Minions/The LichKing.png",
     "description": "Taunt.",
-    "effects": []
+    "effects": [],
+    "keywords": [
+      "TAUNT"
+    ]
   },
   {
     "name": "Kalecgos",
@@ -130,7 +133,10 @@
     "heroClass": "NEUTRAL",
     "imagePath": "assets/images/Minions/Frostwolf Grunt.png",
     "description": "Taunt.",
-    "effects": []
+    "effects": [],
+    "keywords": [
+      "TAUNT"
+    ]
   },
   {
     "name": "Goldshire Footman",
@@ -143,7 +149,10 @@
     "heroClass": "NEUTRAL",
     "imagePath": "assets/images/Minions/Goldshire Footman.png",
     "description": "Taunt.",
-    "effects": []
+    "effects": [],
+    "keywords": [
+      "TAUNT"
+    ]
   },
   {
     "name": "Icehowl",
@@ -214,7 +223,10 @@
     "heroClass": "NEUTRAL",
     "imagePath": "assets/images/Minions/Sunwalker.png",
     "description": "Taunt. Divine Shield.",
-    "effects": []
+    "effects": [],
+    "keywords": [
+      "TAUNT"
+    ]
   },
   {
     "name": "Tirion Fordring",
@@ -226,8 +238,11 @@
     "health": 6,
     "heroClass": "PALADIN",
     "imagePath": "assets/images/Minions/Tirion Fordring.png",
-    "description": "",
-    "effects": []
+    "description": "Taunt.",
+    "effects": [],
+    "keywords": [
+      "TAUNT"
+    ]
   },
   {
     "name": "Wilfred Fizzlebang",
@@ -467,12 +482,12 @@
     "health": 0,
     "heroClass": "WARLOCK",
     "imagePath": "assets/images/Minions/Curse of Weakness.png",
-    "description": "Deal 2 damage to a minion.",
+    "description": "Deal 2 damage to an enemy minion.",
     "effects": [
       {
         "type": "DAMAGE",
         "value": 2,
-        "target": "ANY_MINION"
+        "target": "ENEMY_MINION"
       }
     ]
   },

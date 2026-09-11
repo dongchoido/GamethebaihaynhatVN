@@ -10,6 +10,7 @@ import {
   type SelectDeckPayload, type PlayCardPayload, type AttackPayload,
   type ReconnectPayload,
 } from '@coincard/shared';
+import { objectPayload, optionalString, requiredString } from './validation.js';
 
 /**
  * SocketHandler — chỉ nhận/validate format rồi giao cho GameService.
@@ -21,6 +22,7 @@ import {
 export function registerSocketHandler(io: Server): void {
   const roomManager = new RoomManager();
   const service = new GameService(io, roomManager, new PrismaGameRepository(prisma), prisma);
+  service.startCleanup();
 
   const safe = (socket: Socket, fn: () => void): void => {
     try {
@@ -42,39 +44,94 @@ export function registerSocketHandler(io: Server): void {
 
   io.on('connection', (socket: Socket) => {
     socket.on(ClientEvents.CREATE_ROOM, (payload: CreateRoomPayload) => {
-      safe(socket, () => service.createRoom(socket, payload));
+      safe(socket, () => {
+        const body = objectPayload(payload);
+        service.createRoom(socket, { playerName: requiredString(body, 'playerName', 24) });
+      });
     });
 
     socket.on(ClientEvents.JOIN_ROOM, (payload: JoinRoomPayload) => {
-      safe(socket, () => service.joinRoom(socket, payload));
+      safe(socket, () => {
+        const body = objectPayload(payload);
+        service.joinRoom(socket, {
+          roomCode: requiredString(body, 'roomCode', 6),
+          playerName: requiredString(body, 'playerName', 24),
+        });
+      });
     });
 
     socket.on(ClientEvents.SELECT_DECK, (payload: SelectDeckPayload & { roomCode: string }) => {
-      safe(socket, () => service.selectDeck(socket, payload));
+      safe(socket, () => {
+        const body = objectPayload(payload);
+        service.selectDeck(socket, {
+          heroId: requiredString(body, 'heroId', 32),
+          roomCode: requiredString(body, 'roomCode', 6),
+        });
+      });
     });
 
     socket.on(ClientEvents.PLAY_CARD, (payload: PlayCardPayload) => {
-      safe(socket, () => service.handleAction(socket, payload));
+      safe(socket, () => {
+        const body = objectPayload(payload);
+        service.handleAction(socket, {
+          gameId: requiredString(body, 'gameId', 64),
+          cardInstanceId: requiredString(body, 'cardInstanceId', 128),
+          targetId: optionalString(body, 'targetId', 128),
+        });
+      });
     });
 
     socket.on(ClientEvents.ATTACK, (payload: AttackPayload) => {
-      safe(socket, () => service.handleAction(socket, payload));
+      safe(socket, () => {
+        const body = objectPayload(payload);
+        service.handleAction(socket, {
+          gameId: requiredString(body, 'gameId', 64),
+          attackerId: requiredString(body, 'attackerId', 128),
+          targetId: requiredString(body, 'targetId', 128),
+        });
+      });
     });
 
     socket.on(ClientEvents.END_TURN, (payload: { gameId: string }) => {
-      safe(socket, () => service.handleAction(socket, payload));
+      safe(socket, () => {
+        const body = objectPayload(payload);
+        service.handleAction(socket, { gameId: requiredString(body, 'gameId', 64) });
+      });
     });
 
     socket.on(ClientEvents.USE_HERO_POWER, (payload: { gameId: string }) => {
-      safe(socket, () => service.useHeroPower(socket, payload));
+      safe(socket, () => {
+        const body = objectPayload(payload);
+        service.useHeroPower(socket, { gameId: requiredString(body, 'gameId', 64) });
+      });
+    });
+
+    socket.on(ClientEvents.DRAW_CARD, (payload: { gameId: string }) => {
+      safe(socket, () => {
+        const body = objectPayload(payload);
+        service.drawCard(socket, { gameId: requiredString(body, 'gameId', 64) });
+      });
     });
 
     socket.on(ClientEvents.CONCEDE, (payload: { gameId: string }) => {
-      safe(socket, () => service.concede(socket, payload));
+      safe(socket, () => {
+        const body = objectPayload(payload);
+        service.concede(socket, { gameId: requiredString(body, 'gameId', 64) });
+      });
     });
 
     socket.on(ClientEvents.RECONNECT_GAME, (payload: ReconnectPayload) => {
-      safe(socket, () => service.reconnect(socket, payload));
+      safe(socket, () => {
+        const body = objectPayload(payload);
+        service.reconnect(socket, { sessionToken: requiredString(body, 'sessionToken', 128) });
+      });
+    });
+
+    socket.on(ClientEvents.REMATCH, (payload: { gameId: string }) => {
+      safe(socket, () => {
+        const body = objectPayload(payload);
+        service.rematch(socket, { gameId: requiredString(body, 'gameId', 64) });
+      });
     });
 
     socket.on('disconnect', () => {

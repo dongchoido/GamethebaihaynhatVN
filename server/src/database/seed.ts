@@ -15,6 +15,7 @@ type CardSeed = {
   imagePath: string;
   description: string;
   effects: Array<{ type: string; value: number; target: string }>;
+  keywords?: string[];
 };
 
 const prisma = new PrismaClient();
@@ -33,10 +34,11 @@ async function main() {
   const cards = JSON.parse(await readFile(cardsPath, 'utf8')) as CardSeed[];
 
   for (const card of cards) {
+    const { keywords, ...rest } = card;
     await prisma.card.upsert({
       where: { slug: card.slug },
-      update: { ...card, keywords: [] },
-      create: { id: `card_${card.slug}`, ...card, keywords: [] },
+      update: { ...rest, keywords: keywords ?? [] },
+      create: { id: `card_${card.slug}`, ...rest, keywords: keywords ?? [] },
     });
   }
 

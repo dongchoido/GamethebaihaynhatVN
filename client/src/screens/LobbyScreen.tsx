@@ -11,7 +11,7 @@ import { getHeroAsset, listHeroAssets, playSound, resolveAsset, SOUND, UI_IMAGE 
 
 // Sảnh chờ: hiện mã phòng, chọn hero, đợi đủ 2 người.
 export function LobbyScreen() {
-  const { session, setPhase, setGameState, setSelectedHeroId, selectedHeroId, lobbyPlayers, setLobbyPlayers } = useGameStore();
+  const { session, setPhase, setGameState, setSelectedHeroId, selectedHeroId, lobbyPlayers, setLobbyPlayers, setLastError, lastError, reset } = useGameStore();
   const [roomReady, setRoomReady] = useState(lobbyPlayers.length >= 2);
 
   useEffect(() => {
@@ -19,11 +19,23 @@ export function LobbyScreen() {
 
     const onPlayerJoined = (res: PlayerJoinedResponse) => {
       setLobbyPlayers(res.players);
+      setLastError(null);
       if (res.players.length >= 2) {
         setRoomReady(true);
       }
     };
     const onRoomReady = () => setRoomReady(true);
+    const onRejected = (res: { code: string; message: string }) => {
+      if (res.code === 'RECONNECT_FAILED') {
+        reset();
+        return;
+      }
+      setLastError(`${res.code}: ${res.message}`);
+      if (res.code === 'GAME_START_FAILED') setSelectedHeroId(null);
+    };
+    const onDisconnected = () => {
+      setLastError('Đối thủ đã mất kết nối. Đang chờ kết nối lại...');
+    };
     const onGameState = ({ gameState }: GameStatePayload) => {
       setGameState(gameState);
       if (gameState.status === GameStatus.PLAYING) {
@@ -35,12 +47,16 @@ export function LobbyScreen() {
     socket.on(ServerEvents.PLAYER_JOINED, onPlayerJoined);
     socket.on(ServerEvents.ROOM_READY, onRoomReady);
     socket.on(ServerEvents.GAME_STATE_UPDATED, onGameState);
+    socket.on(ServerEvents.ACTION_REJECTED, onRejected);
+    socket.on(ServerEvents.PLAYER_DISCONNECTED, onDisconnected);
     return () => {
       socket.off(ServerEvents.PLAYER_JOINED, onPlayerJoined);
       socket.off(ServerEvents.ROOM_READY, onRoomReady);
       socket.off(ServerEvents.GAME_STATE_UPDATED, onGameState);
+      socket.off(ServerEvents.ACTION_REJECTED, onRejected);
+      socket.off(ServerEvents.PLAYER_DISCONNECTED, onDisconnected);
     };
-  }, [setGameState, setPhase, setLobbyPlayers]);
+  }, [setGameState, setPhase, setLobbyPlayers, setLastError, setSelectedHeroId, reset]);
 
   const handleSelectHero = (heroClass: string) => {
     if (!session) return;
@@ -49,31 +65,64 @@ export function LobbyScreen() {
     socketService.selectDeck(heroClass, session.roomCode);
   };
 
+  const handleBack = () => {
+    socketService.disconnect();
+    reset();
+  };
+
   return (
     <div className="lobby-screen" style={{ backgroundImage: `url(${resolveAsset(UI_IMAGE.shopBackground)})` }}>
-      <h2>
-        Phòng: <span className="room-code">{session?.roomCode}</span>
-      </h2>
-      <p>
-        Người chơi: {lobbyPlayers.length > 0 ? lobbyPlayers.map((p) => p.name).join(' vs ') : 'Đang đợi đối thủ...'}
-      </p>
-      {!roomReady && <img className="lobby-wait" src={resolveAsset(UI_IMAGE.wait)} alt="waiting" />}
-      <h3>Chọn hero của bạn</h3>
-      <div className="hero-select-row">
-        {listHeroAssets().map((hero) => (
-          <button
-            key={hero.heroClass}
-            type="button"
-            className={selectedHeroId === hero.heroClass ? 'hero-card hero-card-selected' : 'hero-card'}
-            onClick={() => handleSelectHero(hero.heroClass)}
-          >
-            <img src={resolveAsset(hero.portrait)} alt={getHeroAsset(hero.heroClass).name} draggable={false} />
-            <span>{getHeroAsset(hero.heroClass).name}</span>
-          </button>
+      <aside className="lobby-rail" aria-label="Người chơi trong phòng">
+        {lobbyPlayers.map((p) => (
+          <span key={p.playerId} className="lobby-slot filled" title={p.name}>
+            {(p.name || '?').trim().charAt(0).toUpperCase()}
+          </span>
         ))}
+        {Array.from({ length: Math.max(0, 2 - lobbyPlayers.length) }).map((_, i) => (
+          <span key={`empty-${i}`} className="lobby-slot" title="Đang đợi..." />
+        ))}
+        <button type="button" className="lobby-back" onClick={handleBack} title="Về trang chủ">
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+            <path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+      </aside>
+      <div className="lobby-main">
+        <div className="lobby-banner">
+          <span className="lobby-gem left" aria-hidden="true" />
+          <div className="lobby-banner-text">
+            <div className="lobby-room">
+              Phòng: <span className="room-code">{session?.roomCode}</span>
+            </div>
+            <div className="lobby-players">
+              Người chơi: {lobbyPlayers.length > 0 ? lobbyPlayers.map((p) => p.name).join(' vs ') : 'Đang đợi đối thủ...'}
+            </div>
+          </div>
+          <span className="lobby-gem right" aria-hidden="true" />
+        </div>
+        {!roomReady && <div className="lobby-pill">WAIT FOR A FRIEND</div>}
+        <h3 className="lobby-heading">Chọn hero của bạn</h3>
+        {lastError && <p className="error-text" role="alert">{lastError}</p>}
+        <div className="hero-select-row">
+          {listHeroAssets().map((hero) => (
+            <button
+              key={hero.heroClass}
+              type="button"
+              className={selectedHeroId === hero.heroClass ? 'hero-card hero-card-selected' : 'hero-card'}
+              onClick={() => handleSelectHero(hero.heroClass)}
+            >
+              <span className="hero-frame-gem" aria-hidden="true" />
+              <span className="hero-portrait-wrap">
+                <img src={resolveAsset(hero.portrait)} alt={getHeroAsset(hero.heroClass).name} draggable={false} />
+              </span>
+              <span className="hero-cost" title="Hero power cost">{hero.powerCost}</span>
+              <span className="hero-name">{getHeroAsset(hero.heroClass).name}</span>
+            </button>
+          ))}
+        </div>
+        {roomReady && !selectedHeroId && <p className="lobby-status">Hãy chọn hero để sẵn sàng!</p>}
+        {roomReady && selectedHeroId && <p className="lobby-status">Đã sẵn sàng — đợi đối thủ chọn hero...</p>}
       </div>
-      {roomReady && !selectedHeroId && <p>Hãy chọn hero để sẵn sàng!</p>}
-      {roomReady && selectedHeroId && <p>Đã sẵn sàng — đợi đối thủ chọn hero...</p>}
     </div>
   );
 }

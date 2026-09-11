@@ -1,4 +1,4 @@
-import type { EffectDefinition } from '@coincard/shared';
+import { effectNeedsTarget, type EffectDefinition } from '@coincard/shared';
 import type { Game } from './Game.js';
 import { Player } from './Player.js';
 import { Minion } from './Minion.js';
@@ -13,13 +13,35 @@ import {
   TwistingNetherEffect,
 } from './effects/AoeEffects.js';
 import { executeEffect, type ICardEffect } from './effects/ICardEffect.js';
-import { InvalidTargetError } from './errors.js';
+import { BoardFullError, InvalidTargetError } from './errors.js';
+import { MAX_BOARD_SIZE } from './constants.js';
+
+// Effect cần target cụ thể — không có target hợp lệ thì reject, không cho cast.
+// Dùng chung helper với client để hai bên không lệch nhau.
+const TARGETED_EFFECT_TARGETS = {
+  has: (target: EffectDefinition['target']): boolean => effectNeedsTarget(target),
+};
 
 /**
  * Chọn target + giải quyết effect.
  * Polymorphism: các effect implement `ICardEffect`.
  */
 export class EffectResolver {
+  /** Kiểm tra target hợp lệ mà không thay đổi state — validate trước khi commit. */
+  validate(
+    player: Player,
+    opponent: Player,
+    effect: EffectDefinition,
+    targetId?: string,
+  ): void {
+    const target = this.pickTarget(player, opponent, effect, targetId);
+    if (effect.type === 'TRANSFORM' && target instanceof Minion) {
+      const owner = target.ownerId === player.id ? player : opponent;
+      if (owner.boardCount >= MAX_BOARD_SIZE) {
+        throw new BoardFullError();
+      }
+    }
+  }
   resolve(
     game: Game,
     player: Player,
@@ -83,6 +105,10 @@ export class EffectResolver {
     }
 
     if (candidates.length === 0) {
+      // Effect cần target nhưng board rỗng → không cho cast (HS rule).
+      if (TARGETED_EFFECT_TARGETS.has(effect.target)) {
+        throw new InvalidTargetError('Không có mục tiêu hợp lệ.');
+      }
       return null;
     }
 
@@ -115,12 +141,18 @@ export class EffectResolver {
         return player.getBoard();
       case 'ANY_MINION':
         return [...player.getBoard(), ...opponent.getBoard()];
+      case 'SELF':
+        return [player];
+      case 'RANDOM_ENEMY':
+        return []; // Server tự chọn ngẫu nhiên trong resolveRandomEnemies.
       case 'ALL_MINIONS':
       case 'ALL_ENEMY_MINIONS':
       case 'ALL_FRIENDLY_MINIONS':
         return []; // Effect không cần target — tự resolve trong strategy.
       default:
-        return [...player.getBoard(), ...opponent.getBoard()];
+        // Fail-closed: target lạ (kể cả typo data) thì reject chứ không
+        // mặc định cho đánh quái cả 2 bên.
+        throw new InvalidTargetError(`Target chưa hỗ trợ: ${effect.target}.`);
     }
   }
 

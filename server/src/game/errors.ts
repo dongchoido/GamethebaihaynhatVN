@@ -59,9 +59,44 @@ export class ReconnectFailedError extends GameRuleError {
   }
 }
 
+export class InvalidPayloadError extends GameRuleError {
+  readonly code = 'INVALID_PAYLOAD';
+  constructor(message = 'Dữ liệu gửi lên không hợp lệ.') {
+    super(message);
+  }
+}
+
+export class TauntRequiredError extends GameRuleError {
+  readonly code = 'TAUNT_REQUIRED';
+  constructor() {
+    super('Phải tấn công quái Taunt trước.');
+  }
+}
+
 export class GameNotRunningError extends GameRuleError {
   readonly code = 'GAME_NOT_RUNNING';
   constructor() {
     super('Game is not in PLAYING status.');
+  }
+}
+
+export class HandFullError extends GameRuleError {
+  readonly code = 'HAND_FULL';
+  constructor() {
+    super('Tay đã đầy (tối đa 6 lá).');
+  }
+}
+
+export class DeckEmptyError extends GameRuleError {
+  readonly code = 'DECK_EMPTY';
+  constructor() {
+    super('Bộ bài đã hết.');
+  }
+}
+
+export class AlreadyDrewError extends GameRuleError {
+  readonly code = 'ALREADY_DREW';
+  constructor() {
+    super('Mỗi turn chỉ được rút 1 lá từ bộ bài.');
   }
 }

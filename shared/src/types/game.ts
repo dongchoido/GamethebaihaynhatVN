@@ -26,6 +26,7 @@ export interface MinionState {
   health: number;
   maxHealth: number;
   canAttack: boolean;
+  hasTaunt: boolean;
   imagePath: string;
 }
 

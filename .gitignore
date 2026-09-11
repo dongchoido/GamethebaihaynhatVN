@@ -29,6 +29,7 @@ dist/
 *.tsbuildinfo
 .npm-cache/
 .pnpm-store/
+.tools/
 
 # Runtime configuration and local databases
 .env

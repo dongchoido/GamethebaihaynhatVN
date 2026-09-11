@@ -28,6 +28,21 @@ export const EFFECT_TARGETS = [
 
 export type EffectTarget = (typeof EFFECT_TARGETS)[number];
 
+// Effect mà client phải chọn target bằng tay — server và client dùng chung
+// để không lệch nhau (trước đây mỗi bên một Set riêng).
+export const EXPLICIT_TARGET_TYPES: ReadonlySet<EffectTarget> = new Set([
+  'ENEMY_MINION',
+  'FRIENDLY_MINION',
+  'ANY_MINION',
+  'ENEMY_CHARACTER',
+  'ANY_CHARACTER',
+  'ENEMY_HERO',
+]);
+
+export function effectNeedsTarget(target: EffectTarget): boolean {
+  return EXPLICIT_TARGET_TYPES.has(target);
+}
+
 export const EFFECT_TYPES = [
   'DAMAGE', 'AOE_DAMAGE', 'HEAL', 'DRAW', 'BUFF_ATTACK', 'BUFF_HEALTH',
   'MULTIPLY_HEALTH', 'SUMMON', 'TRANSFORM', 'DESTROY', 'DESTROY_ALL',

@@ -13,6 +13,9 @@ export interface RoomPlayer {
 export class Room {
   private players: RoomPlayer[] = [];
   private started = false;
+  private starting = false;
+  private lastActivityAt = Date.now();
+  private readonly rematchVotes = new Set<string>();
 
   constructor(public readonly roomCode: string) {}
 
@@ -21,6 +24,7 @@ export class Room {
       throw new RoomFullError();
     }
     this.players.push(player);
+    this.touch();
   }
 
   joinOrUpdate(player: RoomPlayer): void {
@@ -52,8 +56,29 @@ export class Room {
     return this.started;
   }
 
+  touch(): void {
+    this.lastActivityAt = Date.now();
+  }
+
+  isIdle(ttlMs: number): boolean {
+    return Date.now() - this.lastActivityAt >= ttlMs && this.players.every((p) => p.socketId === null);
+  }
+
+  tryStart(): boolean {
+    if (this.started || this.starting) {
+      return false;
+    }
+    this.starting = true;
+    return true;
+  }
+
   markStarted(): void {
     this.started = true;
+    this.starting = false;
+  }
+
+  cancelStart(): void {
+    this.starting = false;
   }
 
   removeSocket(socketId: string): RoomPlayer | null {
@@ -62,6 +87,51 @@ export class Room {
       return null;
     }
     player.socketId = null;
+    this.touch();
     return player;
+  }
+
+  voteRematch(playerId: string): number {
+    this.rematchVotes.add(playerId);
+    this.touch();
+    return this.rematchVotes.size;
+  }
+
+  clearRematchVotes(): void {
+    this.rematchVotes.clear();
+  }
+
+  resetForRematch(): void {
+    this.started = false;
+    this.starting = false;
+    this.clearRematchVotes();
+    this.players.forEach((player) => {
+      player.ready = true;
+    });
+    this.touch();
+  }
+
+  isStarting(): boolean {
+    return this.starting;
+  }
+
+  getRematchVotes(): number {
+    return this.rematchVotes.size;
+  }
+
+  // Khóa khởi tạo cho rematch: chống double-start khi 2 vote đến gần nhau,
+  // và chống reset started khi trận mới đã chạy.
+  tryStartRematch(): boolean {
+    if (this.starting) {
+      return false;
+    }
+    this.starting = true;
+    this.started = false;
+    this.clearRematchVotes();
+    this.players.forEach((player) => {
+      player.ready = true;
+    });
+    this.touch();
+    return true;
   }
 }

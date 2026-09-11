@@ -98,6 +98,7 @@ async function main() {
     });
   let cur = st;
   let playedMinionId = null;
+  let playedHasCharge = false;
   for (let turn = 0; turn < 14 && !playedMinionId; turn++) {
     const me = cur.players.find((p) => p.playerId === (cur.activePlayerId === aliceId ? aliceId : bobId));
     const foe = cur.players.find((p) => p.playerId !== me.playerId);
@@ -118,6 +119,7 @@ async function main() {
       const after = cur.players.find((p) => p.playerId === me.playerId);
       if (after.board.length > 0) {
         playedMinionId = after.board[after.board.length - 1].instanceId;
+        playedHasCharge = (card.keywords || []).includes('CHARGE');
         check('minion lên board + trừ mana', after.mana === me.mana - card.manaCost);
       }
       break;
@@ -171,12 +173,24 @@ async function main() {
   const ownerNow = cur.players.find((p) => p.playerId === ownerId);
 
   // Summoning sickness: nếu vừa summon trong turn này thì tấn bị reject
+  // (trừ minion CHARGE — keywords thật từ DB nên charge tấn ngay được).
   const foeBefore = () => cur.players.find((p) => p.playerId === foeId).hero.health;
   if (cur.activePlayerId === ownerId) {
-    const rejectPromise = once(ownerSock, 'ACTION_REJECTED');
-    ownerSock.emit('ATTACK', { gameId, attackerId: playedMinionId, targetId: foeId });
-    const rejected = await rejectPromise;
-    check('summoning sickness bị reject', rejected.code === 'INVALID_TARGET');
+    if (playedHasCharge) {
+      const hpB = foeBefore();
+      const pr = waitProgress(
+        ownerSock,
+        (s) => s.players.find((p) => p.playerId === foeId).hero.health !== hpB,
+      );
+      ownerSock.emit('ATTACK', { gameId, attackerId: playedMinionId, targetId: foeId });
+      cur = await pr;
+      check('summoning sickness bị reject', cur.players.find((p) => p.playerId === foeId).hero.health < hpB);
+    } else {
+      const rejectPromise = once(ownerSock, 'ACTION_REJECTED');
+      ownerSock.emit('ATTACK', { gameId, attackerId: playedMinionId, targetId: foeId });
+      const rejected = await rejectPromise;
+      check('summoning sickness bị reject', rejected.code === 'INVALID_TARGET');
+    }
   } else {
     check('summoning sickness bị reject (bỏ qua, khác turn)', true);
   }

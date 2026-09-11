@@ -13,6 +13,10 @@ export interface ReconnectPayload {
   sessionToken: string;
 }
 
+export interface RematchPayload {
+  gameId: string;
+}
+
 export interface RoomCreatedResponse {
   roomCode: string;
   playerId: string;

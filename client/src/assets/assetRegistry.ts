@@ -14,6 +14,7 @@ export interface HeroAsset {
   portrait: string;
   power: string;
   powerDisabled: string;
+  powerCost: number;
   winSplash: string;
   defeatSplash: string;
 }
@@ -25,6 +26,7 @@ const HERO_ASSETS: Record<string, HeroAsset> = {
     portrait: 'assets/images/Heros/Jaina Proudmoore.png',
     power: 'assets/images/HeroPower/Mage.png',
     powerDisabled: 'assets/images/HeroPower/Mage Disabled.png',
+    powerCost: 2,
     winSplash: 'assets/images/Heros/Mage-Win.png',
     defeatSplash: 'assets/images/Heros/Mage-Defeat.png',
   },
@@ -34,6 +36,7 @@ const HERO_ASSETS: Record<string, HeroAsset> = {
     portrait: 'assets/images/Heros/Rexxar.png',
     power: 'assets/images/HeroPower/Hunter.png',
     powerDisabled: 'assets/images/HeroPower/Hunter Disabled.png',
+    powerCost: 2,
     winSplash: 'assets/images/Heros/Hunter-Win.png',
     defeatSplash: 'assets/images/Heros/Hunter-Defeat.png',
   },
@@ -43,6 +46,7 @@ const HERO_ASSETS: Record<string, HeroAsset> = {
     portrait: 'assets/images/Heros/Uther Lightbringer.png',
     power: 'assets/images/HeroPower/Paladin.png',
     powerDisabled: 'assets/images/HeroPower/Paladin Disabled.png',
+    powerCost: 2,
     winSplash: 'assets/images/Heros/Paladin-Win.png',
     defeatSplash: 'assets/images/Heros/Paladin-Defeat.png',
   },
@@ -52,6 +56,7 @@ const HERO_ASSETS: Record<string, HeroAsset> = {
     portrait: 'assets/images/Heros/Anduin-Wrynn.png',
     power: 'assets/images/HeroPower/Priest.png',
     powerDisabled: 'assets/images/HeroPower/Priest Disabled.png',
+    powerCost: 2,
     winSplash: 'assets/images/Heros/Priest-Win.png',
     defeatSplash: 'assets/images/Heros/Priest-Defeat.png',
   },
@@ -61,6 +66,7 @@ const HERO_ASSETS: Record<string, HeroAsset> = {
     portrait: "assets/images/Heros/Gul'dan.png",
     power: 'assets/images/HeroPower/Warlock.png',
     powerDisabled: 'assets/images/HeroPower/Warlock Disabled.png',
+    powerCost: 2,
     winSplash: 'assets/images/Heros/Warlock-Win.png',
     defeatSplash: 'assets/images/Heros/Warlock-Defeat.png',
   },
@@ -74,6 +80,7 @@ export function getHeroAsset(heroClass: string): HeroAsset {
       portrait: 'assets/images/design/NoCardView.png',
       power: 'assets/images/HeroPower/Mage.png',
       powerDisabled: 'assets/images/HeroPower/Mage Disabled.png',
+      powerCost: 2,
       winSplash: 'assets/images/Heros/Mage-Win.png',
       defeatSplash: 'assets/images/Heros/Mage-Defeat.png',
     }
@@ -85,7 +92,8 @@ export function listHeroAssets(): HeroAsset[] {
 }
 
 export const UI_IMAGE = {
-  playground: 'assets/images/design/PlayGround.jpg',
+  playground: 'assets/images/design/ArenaWood.jpg',
+  surrender: 'assets/images/design/SurrenderButton.png',
   boardBackground: 'assets/images/design/Background.jpg',
   startBackground: 'assets/images/design/StartBG.jpg',
   shopBackground: 'assets/images/design/ShopBackground.jpg',
@@ -95,8 +103,7 @@ export const UI_IMAGE = {
   manaCrystal: 'assets/images/design/manacrystal.png',
   manaCrystalDark: 'assets/images/design/manacrystal_dark.png',
   healthBadge: 'assets/images/design/HealthBG.png',
-  endTurn: 'assets/images/design/end turn.png',
-  endTurnDisabled: 'assets/images/design/End_Turn_Disabled.png',
+  endTurn: 'assets/images/design/EndTurnButton.png',
   messageBar: 'assets/images/design/MessageBar.png',
   selectionPlay: 'assets/images/design/SelectionPlay.png',
   versus: 'assets/images/design/vs.png',

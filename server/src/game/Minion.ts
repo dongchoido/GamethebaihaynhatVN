@@ -1,6 +1,7 @@
 // Minion trên board — damage/attacked qua method (encapsulation), getters public.
 export class Minion {
   private health: number;
+  private maximumHealth: number;
   private attack: number;
   private canAttackValue: boolean;
   private summonedThisTurnValue: boolean;
@@ -14,9 +15,11 @@ export class Minion {
     public readonly ownerId: string,
     public readonly hasCharge: boolean,
     public readonly imagePath: string,
+    public readonly hasTaunt: boolean = false,
   ) {
     this.attack = attack;
     this.health = health;
+    this.maximumHealth = health;
     this.hasCharge = hasCharge;
     this.summonedThisTurnValue = !hasCharge;
     this.canAttackValue = hasCharge; // Charge → tấn ngay
@@ -28,6 +31,10 @@ export class Minion {
 
   get currentAttack(): number {
     return this.attack;
+  }
+
+  get maxHealth(): number {
+    return this.maximumHealth;
   }
 
   get canAttack(): boolean {
@@ -48,7 +55,7 @@ export class Minion {
   }
 
   heal(amount: number): void {
-    this.health += amount;
+    this.health = Math.min(this.maximumHealth, this.health + amount);
   }
 
   modifyAttack(delta: number): void {
@@ -57,6 +64,9 @@ export class Minion {
 
   modifyHealth(delta: number): void {
     this.health += delta;
+    if (delta > 0) {
+      this.maximumHealth += delta;
+    }
   }
 
   markAsAttacked(): void {

@@ -9,6 +9,7 @@ export class Game {
   private activePlayerId = '';
   private winnerId: string | null = null;
   private statusMessage = '';
+  private manualDrawTurn = -1;
 
   constructor(
     public readonly gameId: string,
@@ -61,6 +62,14 @@ export class Game {
     return this.winnerId;
   }
 
+  hasManualDrawnThisTurn(): boolean {
+    return this.manualDrawTurn === this.turn;
+  }
+
+  markManualDraw(): void {
+    this.manualDrawTurn = this.turn;
+  }
+
   getStatusMessage(): string {
     return this.statusMessage;
   }
@@ -90,11 +99,17 @@ export class Game {
   }
 
   resign(playerId: string): void {
+    if (this.isFinished()) {
+      return;
+    }
     const winner = this.players.find((p) => p.id !== playerId);
     this.finish(winner?.id ?? null, 'CONCEDE');
   }
 
   finish(winnerId: string | null, reason = ''): void {
+    if (this.isFinished()) {
+      return;
+    }
     this.status = GameStatus.FINISHED;
     this.winnerId = winnerId;
     if (reason) {

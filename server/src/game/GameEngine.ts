@@ -3,16 +3,20 @@ import { Player } from './Player.js';
 import { Hero } from './Hero.js';
 import { Deck, makeUniqueCardId } from './Deck.js';
 import { Minion } from './Minion.js';
-import { GameStatus, CardType } from '@coincard/shared';
+import { GameStatus, CardType, effectNeedsTarget } from '@coincard/shared';
 import { EffectResolver } from './EffectResolver.js';
 import { resolveAttack } from './CombatService.js';
-import { MAX_BOARD_SIZE } from './constants.js';
+import { MAX_BOARD_SIZE, MAX_HAND_SIZE } from './constants.js';
 import { SILVER_HAND_RECRUIT_TOKEN } from './tokenCards.js';
 import {
   NotPlayerTurnError,
   NotEnoughManaError,
   BoardFullError,
+  CardNotInHandError,
   GameNotRunningError,
+  HandFullError,
+  DeckEmptyError,
+  AlreadyDrewError,
 } from './errors.js';
 
 export class GameEngine {
@@ -50,25 +54,34 @@ export class GameEngine {
     targetId?: string,
   ): void {
     const game = this.ensurePlaying(gameId);
-    const player = game.getPlayerById(playerId);
-
     this.assertActivePlayer(game, playerId);
+    const player = game.getPlayerById(playerId);
+    const opponent = game.getOpponent();
 
-    const card = player.removeFromHand(cardInstanceId);
-
+    // ===== PHASE 1: VALIDATE — mọi điều kiện kiểm tra trước, không mutation.
+    const card = player.findCardInHand(cardInstanceId);
+    if (!card) {
+      throw new CardNotInHandError();
+    }
     if (card.manaCost > player.currentMana) {
-      player.addToHand(card);
       throw new NotEnoughManaError();
     }
+    if (card.type === CardType.MINION && player.boardCount >= MAX_BOARD_SIZE) {
+      throw new BoardFullError();
+    }
+    if (card.type !== CardType.MINION) {
+      for (const effect of card.effects) {
+        // targetId của client chỉ dành cho effect cần chọn tay (vd DESTROY);
+        // effect tự resolve (HEAL hero, AOE...) nhận undefined để tự tìm target.
+        this.resolver.validate(player, opponent, effect, this.targetForEffect(effect, targetId));
+      }
+    }
+
+    // ===== PHASE 2: COMMIT — đã validate xong, thực thi nguyên tử.
+    player.removeFromHand(cardInstanceId);
     player.spendMana(card.manaCost);
 
     if (card.type === CardType.MINION) {
-      if (player.boardCount >= MAX_BOARD_SIZE) {
-        player.addToHand(card);
-        player.increaseMaxMana(); // rollback đơn giản: hoàn mana đã trừ
-        player.refillMana();
-        throw new BoardFullError();
-      }
       const minion = new Minion(
         makeUniqueCardId(),
         card.id,
@@ -78,15 +91,15 @@ export class GameEngine {
         player.id,
         card.keywords.includes('CHARGE'),
         card.imagePath,
+        card.keywords.includes('TAUNT'),
       );
       player.summonMinion(minion);
     } else {
-      // Spell — resolve từng effect, sau đó dọn minion chết.
       for (const effect of card.effects) {
-        this.resolver.resolve(game, player, game.getOpponent(), effect, targetId);
+        this.resolver.resolve(game, player, opponent, effect, this.targetForEffect(effect, targetId));
       }
       player.removeDeadMinions();
-      game.getOpponent().removeDeadMinions();
+      opponent.removeDeadMinions();
     }
 
     this.checkWinner(game);
@@ -116,6 +129,24 @@ export class GameEngine {
     game.switchTurn();
   }
 
+  // Rút 1 lá thủ công từ bộ bài — mỗi turn 1 lần, tay tối đa 6 lá.
+  drawCard(gameId: string, playerId: string): void {
+    const game = this.ensurePlaying(gameId);
+    this.assertActivePlayer(game, playerId);
+    const player = game.getPlayerById(playerId);
+    if (player.handCount >= MAX_HAND_SIZE) {
+      throw new HandFullError();
+    }
+    if (player.deckSize <= 0) {
+      throw new DeckEmptyError();
+    }
+    if (game.hasManualDrawnThisTurn()) {
+      throw new AlreadyDrewError();
+    }
+    player.addToHand(player.drawCard());
+    game.markManualDraw();
+  }
+
   useHeroPower(gameId: string, playerId: string): void {
     const game = this.ensurePlaying(gameId);
     const player = game.getPlayerById(playerId);
@@ -124,6 +155,9 @@ export class GameEngine {
 
     if (player.currentMana < hero.powerCost) {
       throw new NotEnoughManaError();
+    }
+    if (hero.heroClass === 'PALADIN' && player.boardCount >= MAX_BOARD_SIZE) {
+      throw new BoardFullError();
     }
     player.spendMana(hero.powerCost);
 
@@ -171,7 +205,7 @@ export class GameEngine {
   }
 
   concede(gameId: string, playerId: string): void {
-    const game = this.getGame(gameId);
+    const game = this.ensurePlaying(gameId);
     game.resign(playerId);
   }
 
@@ -199,6 +233,14 @@ export class GameEngine {
     if (game.getActivePlayerId() !== playerId) {
       throw new NotPlayerTurnError();
     }
+  }
+
+  // Lá multi-effect (vd Siphon Soul): targetId client gửi chỉ áp dụng cho
+  // effect cần chọn tay; effect tự resolve nhận undefined để tự tìm target.
+  private targetForEffect(effect: { target: string }, targetId?: string): string | undefined {
+    return effectNeedsTarget(effect.target as Parameters<typeof effectNeedsTarget>[0])
+      ? targetId
+      : undefined;
   }
 
   private checkWinner(game: Game): void {
