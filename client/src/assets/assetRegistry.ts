@@ -97,7 +97,6 @@ export const UI_IMAGE = {
   startBackground: 'assets/images/design/StartBG.jpg',
   shopBackground: 'assets/images/design/ShopBackground.jpg',
   cardBack: 'assets/images/design/CardViewBack.png',
-  cardBackBurned: 'assets/images/design/BurnedBack.jpg',
   noCard: 'assets/images/design/NoCardView.png',
   manaCrystal: 'assets/images/design/manacrystal.png',
   manaCrystalDark: 'assets/images/design/manacrystal_dark.png',

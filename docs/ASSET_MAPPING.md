@@ -57,7 +57,7 @@ Win/Defeat splash: `Mage-Win.png`, `Hunter-Win.png`, ...
 `Mage.png`, `Hunter.png`, `Paladin.png`, `Priest.png`, `Warlock.png` (+ `Disabled`)
 
 ## UI/design (`assets/images/design/`)
-`PlayGround.jpg` → game background, `Background.jpg` → board, `manacrystal.png` / `manacrystal_dark.png` → mana, `HealthBG.png` → HP badge, `end turn.png` / `End_Turn_Disabled.png` → end-turn, `shop.png` / `start.png` → menu, `start.png` / `StartBG.jpg` → landing, `CardViewBack.png` → overlay, `NoCardView.png` → empty, `MessageBar.png` → status.
+`ArenaWood.jpg` → game background, `ShopBackground.jpg` → lobby background, `StartBG.jpg` → landing, `CardViewBack.png` → card back/deck, `NoCardView.png` → fallback card, `manacrystal.png` / `manacrystal_dark.png` → mana, `HealthBG.png` → HP badge, `EndTurnButton.png` → end-turn, `SurrenderButton.png` → concede.
 
 (Sounds: `assets/sounds/*.wav`)
 
