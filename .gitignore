@@ -37,3 +37,5 @@ dist/
 !.env.example
 *.db
 *.db-journal
+
+target/
