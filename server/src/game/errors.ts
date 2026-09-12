@@ -73,6 +73,13 @@ export class TauntRequiredError extends GameRuleError {
   }
 }
 
+export class MinionsBlockHeroError extends GameRuleError {
+  readonly code = 'MINIONS_BLOCK_HERO';
+  constructor() {
+    super('Đối thủ còn minion trên bàn — phải tấn công minion trước.');
+  }
+}
+
 export class GameNotRunningError extends GameRuleError {
   readonly code = 'GAME_NOT_RUNNING';
   constructor() {

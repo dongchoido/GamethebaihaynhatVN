@@ -192,6 +192,7 @@ export function GameScreen() {
   };
 
   const oppHasTaunt = oppPlayer?.board.some((m) => m.hasTaunt) ?? false;
+  const oppHasMinions = (oppPlayer?.board.length ?? 0) > 0;
 
   const handleMinionClick = (instanceId: string, isMine: boolean) => {
     setLastError(null);
@@ -235,6 +236,10 @@ export function GameScreen() {
       return;
     }
     if (!isMine && selectedAttackerId) {
+      if (oppHasMinions) {
+        setLastError('MINIONS_BLOCK_HERO: Đối thủ còn minion — phải tấn công minion trước.');
+        return;
+      }
       if (oppHasTaunt) {
         setLastError('TAUNT_REQUIRED: Phải tấn công quái Taunt trước.');
         return;
@@ -290,7 +295,7 @@ export function GameScreen() {
         <HeroView
           hero={oppPlayer.hero}
           powerUsable={false}
-          targetable={isMyTurn && ((selectedAttackerId !== null && !oppHasTaunt) || (selectedCard !== null && targetIds.has(oppPlayer.playerId)))}
+          targetable={isMyTurn && ((selectedAttackerId !== null && !oppHasMinions) || (selectedCard !== null && targetIds.has(oppPlayer.playerId)))}
           onHeroClick={() => handleHeroClick(oppPlayer.playerId, false)}
           onPowerClick={() => undefined}
         />

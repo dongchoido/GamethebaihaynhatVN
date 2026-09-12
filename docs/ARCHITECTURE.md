@@ -1,6 +1,17 @@
 # Kiến trúc và OOP
 
-Monorepo: client React/Vite, server Express/Socket.IO, shared DTO/events. Server quyết định luật và chỉ gửi mỗi người tay bài của họ.
+Monorepo: client React/Vite, server Java Spring Boot + WebSocket (`server-java/`,
+backend chính), server Node Express/Socket.IO cũ (`server/`, giữ để tham khảo),
+shared DTO/events cho client. Server quyết định luật và chỉ gửi mỗi người tay bài của họ.
+
+Backend Java port 1-1 logic Node: `game/` (Game/Player/Hero/Minion/Deck,
+`EffectResolver` registry `ICardEffect`, `HeroPower` registry, `CombatService`,
+`GameEngine` validate → checkpoint → commit), `room/` (Room/RoomManager + index
+socket/session O(1)), `net/GameService` (xác thực token/socket/game hiện tại,
+broadcast snapshot riêng từng viewer, lưu kết quả transaction + retry, cleanup),
+`ws/GameWebSocketHandler` (envelope `{event, data}`, tên event/payload giữ nguyên),
+`db/` (`CatalogRepository`/`GameRepository` + adapter JDBC SQLite, seed từ
+`data/cards.json`). Client dùng `CompatSocket` thay socket.io-client, API giữ nguyên.
 
 - network/SocketHandler.ts: validate payload, bắt lỗi, inject repository.
 - network/GameService.ts: xác thực token/socket/game hiện tại, khóa start/rematch, snapshot, lưu kết quả, cleanup.

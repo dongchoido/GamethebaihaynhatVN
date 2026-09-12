@@ -15,6 +15,24 @@ Ngày chạy: 2026-09-11. Môi trường: Windows, Node.js 24, database SQLite t
 | 2 tab trình duyệt | `node e2e-tabs.cjs` (server + Vite dev) | **6/6 pass** |
 | Production một cổng | `GET /health`, `GET /` (không cần Vite) | `{"status":"ok"}`, HTTP 200 |
 
+## Backend Java (`server-java/`, Spring Boot + WebSocket)
+
+Ngày chạy: 2026-09-12. Môi trường: Windows, Java 26, Maven 3.9, SQLite riêng
+(`data/coincard.db` ở gốc repo, seed lại 34 lá + 5 hero).
+
+| Nhóm | Lệnh | Kết quả |
+| --- | --- | --- |
+| Unit Java | `npm run test:java` (JUnit 5, port logic engine) | **16/16 pass** |
+| E2E 2 người chơi | `node e2e-two-players.cjs` (vào server Java `:3000`) | **16/16 pass** |
+| Negative | `node e2e-negative.cjs` | **4/4 pass** |
+| Reconnect/mất mạng | `node e2e-connection.cjs` | PASS |
+| 2 tab trình duyệt | `node e2e-tabs.cjs` (server Java + Vite dev) | **6/6 pass** |
+| Production một cổng | `GET /health`, `GET /` | `{"status":"ok"}`, HTTP 200 |
+
+Client React nói chuyện với server Java qua WebSocket thuần (`/ws`, envelope
+`{event, data}`), giữ nguyên tên event và payload. Script E2E dùng chung
+`e2e-ws.cjs`. Lỗi `MINIONS_BLOCK_HERO` được kiểm tra đúng mã trong unit Java.
+
 ## Phạm vi unit (31 test)
 
 - Action bị từ chối không mutation (mana/bài/board/thống kê giữ nguyên).

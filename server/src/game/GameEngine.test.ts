@@ -340,9 +340,31 @@ describe('GameEngine', () => {
     assert.throws(() => engine.attack('game-1', 'p1', 'atk-1', 'p1'));
     assert.throws(() => engine.attack('game-1', 'p1', 'atk-1', 'mate-1'));
     assert.equal(attacker.canAttack, true);
+    p2.removeMinion('foe-2');
     engine.attack('game-1', 'p1', 'atk-1', 'p2');
     assert.equal(p2.heroState.currentHealth, 27);
     assert.equal(attacker.canAttack, false);
+  });
+
+  it('còn minion địch thì phải đánh minion trước, hết mới được đánh hero', () => {
+    const { engine, game } = setupEngine();
+    const p1 = game.getPlayerById('p1');
+    const p2 = game.getPlayerById('p2');
+    const attacker = new Minion('atk-3', 'c', 'Atk', 3, 3, 'p1', true, 'img');
+    const finisher = new Minion('atk-3b', 'c', 'Atk', 3, 3, 'p1', true, 'img');
+    p1.summonMinion(attacker);
+    p1.summonMinion(finisher);
+    p2.summonMinion(new Minion('foe-4', 'c', 'Foe', 2, 2, 'p2', false, 'img'));
+    assert.throws(
+      () => engine.attack('game-1', 'p1', 'atk-3', 'p2'),
+      (e: unknown) => (e as { code?: string }).code === 'MINIONS_BLOCK_HERO',
+    );
+    assert.equal(attacker.canAttack, true);
+    assert.equal(p2.heroState.currentHealth, 30);
+    engine.attack('game-1', 'p1', 'atk-3', 'foe-4');
+    assert.equal(p2.boardCount, 0);
+    engine.attack('game-1', 'p1', 'atk-3b', 'p2');
+    assert.equal(p2.heroState.currentHealth, 27);
   });
 
   it('Taunt: chặn đánh hero/quái thường, cho đánh Taunt', () => {

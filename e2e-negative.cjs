@@ -1,5 +1,5 @@
 // Negative tests: lỗi client không được giết server.
-const { io } = require('socket.io-client');
+const { connect } = require('./e2e-ws.cjs');
 
 const URL = 'http://localhost:3000';
 let pass = 0;
@@ -22,7 +22,7 @@ function once(socket, event, timeoutMs = 8000) {
 
 async function main() {
   // 1. Join mã phòng không tồn tại → REJECT, server sống
-  const bad = io(URL);
+  const bad = connect(URL);
   await once(bad, 'connect');
   const rejP = once(bad, 'ACTION_REJECTED');
   bad.emit('JOIN_ROOM', { roomCode: 'ZZZZZZ', playerName: 'Ghost' });
@@ -30,9 +30,9 @@ async function main() {
   check('sai mã phòng → ROOM_NOT_FOUND reject', rej.code === 'ROOM_NOT_FOUND');
 
   // 2. Tạo phòng thật, nhồi người thứ 3 → ROOM_FULL reject
-  const p1 = io(URL);
-  const p2 = io(URL);
-  const p3 = io(URL);
+  const p1 = connect(URL);
+  const p2 = connect(URL);
+  const p3 = connect(URL);
   await Promise.all([once(p1, 'connect'), once(p2, 'connect'), once(p3, 'connect')]);
   const createdP = once(p1, 'ROOM_CREATED');
   p1.emit('CREATE_ROOM', { playerName: 'A' });
@@ -52,7 +52,7 @@ async function main() {
   check('gameId sai → reject không crash', true);
 
   // 4. Server còn sống: tạo phòng mới được
-  const p4 = io(URL);
+  const p4 = connect(URL);
   await once(p4, 'connect');
   const okP = once(p4, 'ROOM_CREATED');
   p4.emit('CREATE_ROOM', { playerName: 'Alive' });
@@ -61,7 +61,7 @@ async function main() {
 
   for (const s of [bad, p1, p2, p3, p4]) s.disconnect();
   console.log(`\nNEGATIVE: ${pass}/${pass + fail} pass`);
-  process.exit(fail ? 1 : 0);
+  process.exitCode = fail ? 1 : 0;
 }
 
 main().catch((err) => {

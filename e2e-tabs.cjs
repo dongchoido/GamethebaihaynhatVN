@@ -1,5 +1,5 @@
 // Mô phỏng đúng 2 tab browser: qua proxy :5173 + reauth/RECONNECT như client.
-const { io } = require('socket.io-client');
+const { connect } = require('./e2e-ws.cjs');
 
 const URL = 'http://localhost:5173';
 let pass = 0;
@@ -20,12 +20,9 @@ function once(socket, event, timeoutMs = 10000) {
   });
 }
 
-// Client-faithful: sau khi có token → gắn auth, reconnect, auto RECONNECT_GAME.
+// Client-faithful: sau khi có token → reconnect rồi auto RECONNECT_GAME.
 async function reauth(socket, token) {
-  socket.auth = { sessionToken: token };
-  const connectedP = once(socket, 'connect');
-  socket.disconnect().connect();
-  await connectedP;
+  await socket.reconnect();
   socket.emit('RECONNECT_GAME', { sessionToken: token });
 }
 
@@ -44,8 +41,8 @@ function waitTurn(socket, gameId, minTurn, timeoutMs = 12000) {
 }
 
 async function main() {
-  const tab1 = io(URL);
-  const tab2 = io(URL);
+  const tab1 = connect(URL);
+  const tab2 = connect(URL);
   await Promise.all([once(tab1, 'connect'), once(tab2, 'connect')]);
   check('2 tabs connect qua proxy', true);
 
@@ -111,7 +108,7 @@ async function main() {
   tab1.disconnect();
   tab2.disconnect();
   console.log(`\nTABS: ${pass}/${pass + fail} pass`);
-  process.exit(fail ? 1 : 0);
+  process.exitCode = fail ? 1 : 0;
 }
 
 main().catch((err) => {

@@ -1,5 +1,5 @@
 import type { Player } from './Player.js';
-import { InvalidTargetError, TauntRequiredError } from './errors.js';
+import { InvalidTargetError, MinionsBlockHeroError, TauntRequiredError } from './errors.js';
 
 /**
  * Chiến đấu — minion của người đang đánh chỉ được đánh sang phe địch.
@@ -25,6 +25,10 @@ export function resolveAttack(
   const taunts = opponent.getBoard().filter((m) => m.hasTaunt && !m.isDead());
 
   if (targetId === opponent.id) {
+    // Luật board: còn minion địch là phải đánh minion, không được đánh hero.
+    if (opponent.boardCount > 0) {
+      throw new MinionsBlockHeroError();
+    }
     if (taunts.length > 0) {
       throw new TauntRequiredError();
     }

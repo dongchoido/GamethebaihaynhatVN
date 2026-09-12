@@ -1,6 +1,7 @@
 const assert = require('node:assert/strict');
-const { io } = require('socket.io-client');
+const { connect } = require('./e2e-ws.cjs');
 const url = process.env.GAME_URL || 'http://127.0.0.1:3000';
+const io = (u, opts) => connect(u, opts);
 function wait(socket, event, predicate = () => true) {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => { socket.off(event, handler); reject(new Error(`Timeout: ${event}`)); }, 15000);

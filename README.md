@@ -6,13 +6,37 @@ client chỉ gửi action, mọi damage/mana/draw/HP do server quyết.
 
 ## Tech stack
 - Client: React + TypeScript + Vite (`client/`, port 5173)
-- Server: Node.js + Express + Socket.IO (`server/`, port 3000)
-- DB: SQLite + Prisma (`server/prisma/`, file `data/coincard.db`)
-- Shared types/events: `shared/` (cả 2 bên cùng dùng)
+- Server Java: Spring Boot + WebSocket thuần + SQLite (`server-java/`, port 3000) — **backend chính**
+- Server Node cũ: Node.js + Express + Socket.IO (`server/`, port 3000) — giữ để tham khảo
+- DB: SQLite (`data/coincard.db` cho bản Java; `server/data/coincard.db` cho bản Node)
+- Shared types/events: `shared/` (client dùng)
 
 ## Yêu cầu
-- Node.js >= 18 (đã test với Node 24)
+- Node.js >= 18 (đã test với Node 24) cho client
 - npm >= 9
+- Java >= 17 (đã test với Java 26) + Maven 3.9 (`npm run` script dùng bản trong `.tools/`) cho server Java
+
+## Cách chạy game bằng server Java
+
+```bash
+# 1. Cài dependencies client (từ thư mục gốc project)
+npm install
+
+# 2. Build client production (server Java phục vụ thư mục này)
+npm run build:client
+
+# 3. Chạy server Java (tự tạo bảng + seed 34 lá + 5 hero nếu DB trống)
+npm run dev:java
+```
+
+Mở `http://localhost:3000` trên 2 tab để chơi. Muốn chạy dev client riêng (hot reload):
+`npm run dev:client` rồi mở `http://localhost:5173` (Vite proxy `/ws` về Java).
+
+```bash
+npm run test:java   # unit test Java (JUnit, 16 test engine)
+npm run build:java  # đóng gói jar
+npm run start:java  # chạy jar (cần build client + DB trước)
+```
 
 ## Cách chạy game (lần đầu)
 

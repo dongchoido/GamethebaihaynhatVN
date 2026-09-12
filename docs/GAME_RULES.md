@@ -6,7 +6,7 @@
 - Mỗi lượt riêng tăng max mana 1 (tối đa 10), hồi đầy và tự rút 1. Người đi trước không rút thêm ở lượt mở đầu.
 - Tay tối đa **6 lá**, bàn tối đa **7 minion mỗi bên**. Tự rút/effect khi tay đầy làm cháy lá vừa rút.
 - Rút thủ công thêm **một lần/lượt**, không tốn mana. Tay đầy hoặc deck hết thì từ chối, không mất bài. Refresh giữ giới hạn. Chưa có fatigue.
-- Minion mới triệu hồi không đánh ngay, trừ CHARGE. Mỗi minion đánh một lần/lượt. TAUNT bắt buộc mục tiêu tấn công, không áp dụng spell/power.
+- Minion mới triệu hồi không đánh ngay, trừ CHARGE. Mỗi minion đánh một lần/lượt. Đối thủ còn minion trên bàn thì phải tấn công minion, không được đánh hero; trong số đó TAUNT bắt buộc mục tiêu. Không áp dụng spell/power.
 - Minion giao chiến gây sát thương đồng thời. Damage thống kê là HP thực mất, kể cả phản công; không tính overkill hoặc tự gây damage.
 - Polymorph thay đúng slot bằng Sheep 1/1 kể cả bàn đầy, không tăng thống kê triệu hồi.
 - DESTROY chỉ xét ngưỡng khi có minAttack. Siphon Soul phá minion bất kỳ và hồi 3 hero mình; Shadow Word: Death yêu cầu công ≥5.

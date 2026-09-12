@@ -30,5 +30,5 @@ Room players gồm playerId/name/heroClass/ready/connected; không lộ token. G
 
 Reconnect trả room snapshot và game snapshot nếu có. Socket mới chiếm session hợp lệ, socket cũ bị ngắt. Action phải khớp token, socketId hiện tại và gameId hiện tại. Game cũ bị xóa sau rematch. PLAYING → game; FINISHED → over kể cả refresh; RECONNECT_FAILED xóa session/auth. Mất mạng khóa thao tác, socket tự nối lại. Đổi URL tunnel tạo origin mới nên bắt đầu phòng mới.
 
-Runtime validation: tên tối đa 24 ký tự, roomCode tối đa 6, gameId 64, card/target/token 128. Lỗi gồm INVALID_PAYLOAD, INVALID_TARGET, HAND_FULL, DECK_EMPTY, ALREADY_DREW, TAUNT_REQUIRED. Không coi action thành công trước snapshot.
+Runtime validation: tên tối đa 24 ký tự, roomCode tối đa 6, gameId 64, card/target/token 128. Lỗi gồm INVALID_PAYLOAD, INVALID_TARGET, HAND_FULL, DECK_EMPTY, ALREADY_DREW, TAUNT_REQUIRED, MINIONS_BLOCK_HERO. Không coi action thành công trước snapshot.
 

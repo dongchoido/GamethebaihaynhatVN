@@ -1,4 +1,3 @@
-import { io, type Socket } from 'socket.io-client';
 import {
   ClientEvents,
   type AttackPayload,
@@ -6,20 +5,20 @@ import {
   type PlayCardPayload,
   type ReconnectPayload,
 } from '@coincard/shared';
+import { CompatSocket } from './compatSocket';
 
-// Wrapper mỏng quanh socket.io-client — component không gọi io() trực tiếp.
+// Wrapper mỏng quanh CompatSocket (WebSocket thuần tới server Java) —
+// component không gọi transport trực tiếp. Giữ nguyên API cũ của socket.io.
 class SocketService {
-  private socket: Socket | null = null;
+  private socket: CompatSocket | null = null;
 
   // Tái dùng socket đang có (kể cả đang connecting) — tránh StrictMode
   // double-mount tạo 2 connection/tab. Muốn socket mới thì disconnect() trước.
-  connect(sessionToken?: string): Socket {
+  connect(sessionToken?: string): CompatSocket {
     if (this.socket) {
       return this.socket;
     }
-    this.socket = io({
-      auth: sessionToken ? { sessionToken } : {},
-    });
+    this.socket = new CompatSocket(sessionToken ? { sessionToken } : {});
     // Tự join lại phòng mỗi khi (re)connect — rớt mạng/server restart xong
     // socket tự nối lại thì game tiếp tục, không kẹt.
     this.socket.on('connect', () => {
@@ -31,7 +30,7 @@ class SocketService {
     return this.socket;
   }
 
-  getSocket(): Socket {
+  getSocket(): CompatSocket {
     if (!this.socket) {
       throw new Error('Socket chưa connect.');
     }

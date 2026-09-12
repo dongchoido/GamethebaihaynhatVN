@@ -1,5 +1,5 @@
-// E2E: mô phỏng 2 browser chơi qua Socket.IO thật.
-const { io } = require('socket.io-client');
+// E2E: mô phỏng 2 browser chơi qua WebSocket thật (server Java).
+const { connect } = require('./e2e-ws.cjs');
 
 const URL = 'http://localhost:3000';
 const results = [];
@@ -19,8 +19,8 @@ function once(socket, event, timeoutMs = 8000) {
 }
 
 async function main() {
-  const p1 = io(URL);
-  const p2 = io(URL);
+  const p1 = connect(URL);
+  const p2 = connect(URL);
   await Promise.all([once(p1, 'connect'), once(p2, 'connect')]);
   check('2 sockets connected', true);
 
@@ -30,9 +30,7 @@ async function main() {
   const created = await createdPromise;
   check('ROOM_CREATED có roomCode 6 ký tự', created.roomCode && created.roomCode.length === 6);
   const roomCode = created.roomCode;
-  p1.auth = { sessionToken: created.sessionToken };
-  p1.disconnect().connect();
-  await once(p1, 'connect');
+  await p1.reconnect();
   p1.emit('RECONNECT_GAME', { sessionToken: created.sessionToken });
 
   // P2 join
@@ -40,9 +38,7 @@ async function main() {
   p2.emit('JOIN_ROOM', { roomCode, playerName: 'Bob' });
   const joined = await joinedPromise;
   check('PLAYER_JOINED đủ 2 người', joined.players && joined.players.length === 2);
-  p2.auth = { sessionToken: joined.sessionToken };
-  p2.disconnect().connect();
-  await once(p2, 'connect');
+  await p2.reconnect();
   p2.emit('RECONNECT_GAME', { sessionToken: joined.sessionToken });
 
   // Cả 2 chọn hero
@@ -276,7 +272,7 @@ async function main() {
 
   const failed = results.filter(([, ok]) => !ok);
   console.log(`\nE2E: ${results.length - failed.length}/${results.length} pass`);
-  process.exit(failed.length ? 1 : 0);
+  process.exitCode = failed.length ? 1 : 0;
 }
 
 main().catch((err) => {
