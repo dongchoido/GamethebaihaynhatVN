@@ -1,58 +1,29 @@
-# Báo cáo kiểm thử CoinCard (bản final)
+# Báo cáo kiểm thử CoinCard
 
-Ngày chạy: 2026-09-11. Môi trường: Windows, Node.js 24, database SQLite thật
-(`data/coincard.db`) cho E2E; integration dùng database thử riêng biệt.
+Ngày cập nhật: 2026-09-21. Backend duy nhất: Spring Boot + WebSocket + SQLite.
 
-## Kết quả thực tế
-
-| Nhóm | Lệnh | Kết quả |
+| Nhóm | Lệnh | Kết quả gần nhất |
 | --- | --- | --- |
-| Build + unit + integration | `npm run verify` | PASS — build shared/server/client, **31/31 unit**, integration (migrate + seed + catalog + start + lỗi lưu + session cũ + tái đấu + cleanup trên DB thử riêng) |
-| Typecheck | `tsc --noEmit` từng workspace + trong `build` | PASS |
-| E2E 2 người chơi | `node e2e-two-players.cjs` (server production `--serve-client`) | **16/16 pass** |
-| Negative | `npm run test:e2e-neg` | **4/4 pass** (sai mã phòng, phòng đầy, game không tồn tại...) |
-| Reconnect/mất mạng | `node e2e-connection.cjs` | PASS (join/start không race auth, đối thủ nhận reconnect, cả hai đánh tiếp được) |
-| 2 tab trình duyệt | `node e2e-tabs.cjs` (server + Vite dev) | **6/6 pass** |
-| Production một cổng | `GET /health`, `GET /` (không cần Vite) | `{"status":"ok"}`, HTTP 200 |
+| Java unit/regression/database | `npm run test:java` | **22/22 pass** |
+| Client typecheck + production build | `npm run build:client` | PASS |
+| E2E hai người | `npm run test:e2e` | **16/16 pass** |
+| Negative | `npm run test:e2e-neg` | **4/4 pass** |
+| Reconnect | `npm run test:e2e-connection` | PASS |
+| Hai tab qua Vite | `npm run test:e2e-tabs` | **6/6 pass** |
+| Production một cổng | `GET /health`, `GET /` | HTTP 200 |
 
-## Backend Java (`server-java/`, Spring Boot + WebSocket)
+## Phạm vi Java
 
-Ngày chạy: 2026-09-12. Môi trường: Windows, Java 26, Maven 3.9, SQLite riêng
-(`data/coincard.db` ở gốc repo, seed lại 34 lá + 5 hero).
+- Validate trước mutation và rollback toàn bộ multi-effect lỗi.
+- Toàn bộ spell trong catalog thật resolve với target hợp lệ.
+- Polymorph trên board đầy; destroy có điều kiện; Siphon Soul.
+- Charge, Taunt, minion chắn hero, hand/board limit và manual draw.
+- Thắng, thua, hòa khi hai hero chết cùng action.
+- Damage thực không tính overkill và có tính phản công.
+- Persistence transaction và nhiều rematch trong cùng room.
 
-| Nhóm | Lệnh | Kết quả |
-| --- | --- | --- |
-| Unit Java | `npm run test:java` (JUnit 5, port logic engine) | **16/16 pass** |
-| E2E 2 người chơi | `node e2e-two-players.cjs` (vào server Java `:3000`) | **16/16 pass** |
-| Negative | `node e2e-negative.cjs` | **4/4 pass** |
-| Reconnect/mất mạng | `node e2e-connection.cjs` | PASS |
-| 2 tab trình duyệt | `node e2e-tabs.cjs` (server Java + Vite dev) | **6/6 pass** |
-| Production một cổng | `GET /health`, `GET /` | `{"status":"ok"}`, HTTP 200 |
+## Giới hạn
 
-Client React nói chuyện với server Java qua WebSocket thuần (`/ws`, envelope
-`{event, data}`), giữ nguyên tên event và payload. Script E2E dùng chung
-`e2e-ws.cjs`. Lỗi `MINIONS_BLOCK_HERO` được kiểm tra đúng mã trong unit Java.
-
-## Phạm vi unit (31 test)
-
-- Action bị từ chối không mutation (mana/bài/board/thống kê giữ nguyên).
-- Multi-effect lỗi hoàn tác toàn bộ action (checkpoint/rollback hai Player).
-- Polymorph thay đúng slot khi board đầy, không tăng thống kê summon.
-- DESTROY có/không ngưỡng minAttack; target dưới ngưỡng bị từ chối trước khi tiêu tài nguyên.
-- Opening guarantee không nhân đôi bài khi deck không có lá rẻ (kiểm tra số lượng + instance duy nhất).
-- Taunt bắt buộc mục tiêu; Charge đánh ngay; tay 6 lá burn khi đầy; rút thủ công 1 lần/lượt.
-- Thắng/thua/hòa (cả hai hero chết cùng action → `winnerId null`).
-- Thống kê damage thực (không overkill, tính cả phản công, không tính destroy/transform).
-- Catalog thật: mọi spell resolve được trên target hợp lệ.
-
-## Kiểm chứng tay (trên 1 máy, 2 tab)
-
-- Tạo/join phòng → chọn hero → đánh bài/tấn công/rút bài → kết thúc → tái đấu: đạt.
-- Refresh ở lobby/game/results, disconnect/reconnect, che tay đối thủ: đạt.
-- Màn hẹp: cuộn dọc, tay bài cuộn ngang, các nút tiếp cận được.
-- Ảnh/âm thanh load; layout desktop đầy đủ; mobile ở mức dùng được.
-
-## Giới hạn đã biết
-
-- Kiểm thử tự động chạy nội bộ (localhost); kiểm chứng qua Internet trên hai thiết bị khác mạng thực hiện riêng qua Quick Tunnel, không import phòng đang chơi làm dữ liệu test.
-- Restart server không phục hồi trận đang chơi; lưu kết quả lỗi retry tối đa 2 lần rồi ghi log (chưa có durable queue qua crash).
+- E2E chạy trên localhost; Quick Tunnel được kiểm tra vận hành riêng.
+- Restart server không phục hồi game đang chơi.
+- Retry lưu kết quả chưa phải durable queue.

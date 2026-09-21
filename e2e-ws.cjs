@@ -1,6 +1,6 @@
-// Shim WebSocket cho E2E: cùng API tối thiểu của socket.io-client mà script cần
-// (on/off/once/emit/disconnect/connect/reconnect + event 'connect'),
-// nhưng nói envelope {event, data} với server Java.
+// WebSocket helper cho E2E với API event nhỏ gọn và envelope {event, data}.
+const WebSocketClient = globalThis.WebSocket ?? require('ws');
+
 function connect(url, opts = {}) {
   const target = url.replace(/^http/, 'ws') + '/ws';
   const listeners = new Map();
@@ -70,7 +70,7 @@ function connect(url, opts = {}) {
     }
   }
   function open() {
-    const ws = new WebSocket(target);
+    const ws = new WebSocketClient(target);
     sock._ws = ws;
     ws.onopen = () => {
       sock.connected = true;

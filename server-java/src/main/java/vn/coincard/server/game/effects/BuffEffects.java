@@ -2,7 +2,7 @@ package vn.coincard.server.game.effects;
 
 import vn.coincard.server.game.Minion;
 
-/** Mirror of BuffEffects.ts */
+/** Attack and health buff strategies. */
 public final class BuffEffects {
   private BuffEffects() {}
 

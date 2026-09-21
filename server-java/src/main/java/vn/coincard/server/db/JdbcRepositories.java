@@ -15,10 +15,7 @@ import vn.coincard.server.db.Repositories.GameRepository;
 import vn.coincard.server.db.Repositories.HeroRecord;
 import vn.coincard.server.game.CardTypes;
 
-/**
- * JDBC adapters. Same tables/columns as the Prisma schema
- * (Card, Hero, Game, Player, GamePlayer); result save runs in a transaction.
- */
+/** JDBC adapters for the card catalog and transactional match results. */
 @Repository
 public class JdbcRepositories {
   private final ObjectMapper mapper = new ObjectMapper();
@@ -34,7 +31,9 @@ public class JdbcRepositories {
         + " startedAt TEXT, finishedAt TEXT, winnerId TEXT)");
     jdbc.execute("CREATE TABLE IF NOT EXISTS Player (id TEXT PRIMARY KEY, name TEXT, createdAt TEXT)");
     jdbc.execute("CREATE TABLE IF NOT EXISTS GamePlayer (id TEXT PRIMARY KEY, gameId TEXT, playerId TEXT,"
-        + " deckId TEXT, winner INTEGER DEFAULT 0, UNIQUE(gameId, playerId))");
+        + " winner INTEGER DEFAULT 0, UNIQUE(gameId, playerId))");
+    jdbc.execute("DROP INDEX IF EXISTS Game_roomCode_key");
+    jdbc.execute("CREATE INDEX IF NOT EXISTS Game_roomCode_idx ON Game(roomCode)");
   }
 
   @Repository

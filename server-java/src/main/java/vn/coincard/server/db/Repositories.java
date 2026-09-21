@@ -3,7 +3,7 @@ package vn.coincard.server.db;
 import java.util.List;
 import vn.coincard.server.game.CardTypes;
 
-/** Repository interfaces — service depends on these, never on JDBC/Prisma. */
+/** Repository interfaces keep game services independent from JDBC. */
 public final class Repositories {
   private Repositories() {}
 

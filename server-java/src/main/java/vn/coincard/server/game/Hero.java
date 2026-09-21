@@ -1,9 +1,9 @@
 package vn.coincard.server.game;
 
-/** Mirror of server/src/game/Hero.ts */
-public class Hero {
-  private int health;
+import vn.coincard.server.model.GameCharacter;
 
+/** Mutable hero — Inheritance: Hero là một GameCharacter. */
+public class Hero extends GameCharacter {
   public Hero(String heroId, String name, String heroClass,
       String powerName, int powerCost, String imagePath) {
     this(heroId, name, heroClass, powerName, powerCost, imagePath, Constants.MAX_HERO_HEALTH);
@@ -11,43 +11,50 @@ public class Hero {
 
   public Hero(String heroId, String name, String heroClass,
       String powerName, int powerCost, String imagePath, int health) {
+    super(Constants.MAX_HERO_HEALTH);
     this.heroId = heroId;
     this.name = name;
     this.heroClass = heroClass;
     this.powerName = powerName;
     this.powerCost = powerCost;
     this.imagePath = imagePath;
-    this.health = health;
+    setCurrentHealth(Math.min(health, Constants.MAX_HERO_HEALTH));
   }
 
-  public final String heroId;
-  public final String name;
-  public final String heroClass;
-  public final String powerName;
-  public final int powerCost;
-  public final String imagePath;
+  private final String heroId;
+  private final String name;
+  private final String heroClass;
+  private final String powerName;
+  private final int powerCost;
+  private final String imagePath;
 
-  public int currentHealth() { return health; }
-  public int maxHealth() { return Constants.MAX_HERO_HEALTH; }
+  public String getHeroId() { return heroId; }
+  public String getName() { return name; }
+  public String getHeroClass() { return heroClass; }
+  public String getPowerName() { return powerName; }
+  public int getPowerCost() { return powerCost; }
+  public String getImagePath() { return imagePath; }
 
-  /** Returns actual damage applied (no overkill). */
+  @Override
+  public int maxHealth() {
+    return Constants.MAX_HERO_HEALTH;
+  }
+
+  @Override
+  public String getCharacterType() {
+    return "HERO";
+  }
+
+  @Override
   public int takeDamage(int amount) {
-    if (amount < 0) throw new IllegalArgumentException("Damage không hợp lệ.");
-    int actual = Math.min(Math.max(0, health), amount);
-    health -= actual;
-    return actual;
+    int before = getCurrentHealth();
+    super.takeDamage(amount);
+    return before - getCurrentHealth();
   }
 
-  public void heal(int amount) {
-    if (amount < 0) throw new IllegalArgumentException("Heal không hợp lệ.");
-    health = Math.min(maxHealth(), health + amount);
-  }
-
-  public boolean isDead() { return health <= 0; }
-
-  /** Opaque undo. */
+  /** Opaque undo — Memento. */
+  @Override
   public Runnable checkpoint() {
-    int h = health;
-    return () -> health = h;
+    return checkpointHealth();
   }
 }

@@ -3,15 +3,9 @@ package vn.coincard.server.ws;
 import java.util.Map;
 import vn.coincard.server.game.GameException;
 
-/** Mirror of server/src/network/validation.ts */
+/** Strict validation helpers for incoming WebSocket payloads. */
 public final class Payload {
   private Payload() {}
-
-  @SuppressWarnings("unchecked")
-  public static Map<String, Object> object(Object value) {
-    if (!(value instanceof Map)) throw new GameException.InvalidPayload();
-    return (Map<String, Object>) value;
-  }
 
   public static String requiredString(Map<String, Object> payload, String field, int maxLength) {
     Object value = payload.get(field);

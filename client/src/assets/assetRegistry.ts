@@ -8,7 +8,7 @@ export function resolveAsset(relativePath: string): string {
   return encodeURI(`${PUBLIC_BASE}${normalized}`);
 }
 
-export interface HeroAsset {
+interface HeroAsset {
   heroClass: string;
   name: string;
   portrait: string;
@@ -97,7 +97,6 @@ export const UI_IMAGE = {
   startBackground: 'assets/images/design/StartBG.jpg',
   shopBackground: 'assets/images/design/ShopBackground.jpg',
   cardBack: 'assets/images/design/CardViewBack.png',
-  noCard: 'assets/images/design/NoCardView.png',
   manaCrystal: 'assets/images/design/manacrystal.png',
   manaCrystalDark: 'assets/images/design/manacrystal_dark.png',
   healthBadge: 'assets/images/design/HealthBG.png',
@@ -112,7 +111,6 @@ export const SOUND = {
   heroSelect: 'assets/sounds/HeroSelect.wav',
   start: 'assets/sounds/Start.wav',
   victory: 'assets/sounds/Victory.wav',
-  intro: 'assets/sounds/Intro.wav',
 } as const;
 
 export function playSound(relativePath: string): void {

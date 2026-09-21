@@ -19,7 +19,7 @@ public class DamageEffect implements ICardEffect {
     }
     if (target instanceof Minion m) {
       int actual = m.takeDamage(amount);
-      if (m.ownerId.equals(context.opponent.id())) context.player.recordDamage(actual);
+      if (m.getOwnerId().equals(context.opponent.id())) context.player.recordDamage(actual);
     }
   }
 }

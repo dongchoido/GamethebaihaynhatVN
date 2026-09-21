@@ -1,9 +1,10 @@
 package vn.coincard.server.game;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
-/** Mirror of server/src/game/Player.ts */
+/** Player state and controlled mutation methods. */
 public class Player {
   private int mana;
   private int maxMana;
@@ -20,15 +21,22 @@ public class Player {
     this.deck = deck;
   }
 
-  public final String playerId;
-  public final String name;
-  public final Hero hero;
+  private final String playerId;
+  private final String name;
+  private final Hero hero;
   private final Deck deck;
 
   public String id() { return playerId; }
+  public String getPlayerId() { return playerId; }
+  public String getName() { return name; }
+  public Hero getHero() { return hero; }
+  // Encapsulation: không expose collection mutable trực tiếp
+  public List<CardTypes.CardDefinition> getHand() {
+    return Collections.unmodifiableList(hand);
+  }
   public int currentMana() { return mana; }
   public int currentMaxMana() { return maxMana; }
-  public List<CardTypes.CardDefinition> handCards() { return new ArrayList<>(hand); }
+  public List<CardTypes.CardDefinition> handCards() { return Collections.unmodifiableList(hand); }
   public int handCount() { return hand.size(); }
   public int boardCount() { return board.size(); }
   public int deckSize() { return deck.size(); }
@@ -42,8 +50,6 @@ public class Player {
   }
 
   public void recordCardPlayed() { cardsPlayedValue++; }
-
-  public boolean hasEnoughMana(int cost) { return mana >= cost; }
 
   public void spendMana(int amount) {
     if (amount < 0 || amount > mana) throw new IllegalArgumentException("Mana không hợp lệ.");
@@ -83,8 +89,8 @@ public class Player {
     }
   }
 
-  /** Defensive copy — board mutation only via Player methods. */
-  public List<Minion> getBoard() { return new ArrayList<>(board); }
+  /** Không expose mutable list trực tiếp — chỉ thay đổi qua behavior. */
+  public List<Minion> getBoard() { return Collections.unmodifiableList(board); }
 
   public void addToHand(CardTypes.CardDefinition card) {
     if (hand.size() >= Constants.MAX_HAND_SIZE) return; // burn
@@ -103,7 +109,7 @@ public class Player {
   }
 
   public void summonMinion(Minion minion) {
-    if (!minion.ownerId.equals(id())) throw new IllegalArgumentException("Sai chủ sở hữu minion.");
+    if (!minion.getOwnerId().equals(id())) throw new IllegalArgumentException("Sai chủ sở hữu minion.");
     if (board.size() >= Constants.MAX_BOARD_SIZE) throw new GameException.BoardFull();
     board.add(minion);
     minionsSummonedValue++;
@@ -111,13 +117,13 @@ public class Player {
 
   public Minion removeMinion(String instanceId) {
     for (int i = 0; i < board.size(); i++) {
-      if (board.get(i).instanceId.equals(instanceId)) return board.remove(i);
+      if (board.get(i).getInstanceId().equals(instanceId)) return board.remove(i);
     }
     return null;
   }
 
   public Minion findMinion(String instanceId) {
-    return board.stream().filter(m -> m.instanceId.equals(instanceId)).findFirst().orElse(null);
+    return board.stream().filter(m -> m.getInstanceId().equals(instanceId)).findFirst().orElse(null);
   }
 
   public void removeDeadMinions() {
@@ -126,9 +132,9 @@ public class Player {
 
   /** Polymorph-style replace in place: no free slot needed, not counted as a summon. */
   public void replaceMinion(String instanceId, Minion replacement) {
-    if (!replacement.ownerId.equals(id())) throw new IllegalArgumentException("Không thể thay minion.");
+    if (!replacement.getOwnerId().equals(id())) throw new IllegalArgumentException("Không thể thay minion.");
     for (int i = 0; i < board.size(); i++) {
-      if (board.get(i).instanceId.equals(instanceId)) {
+      if (board.get(i).getInstanceId().equals(instanceId)) {
         board.set(i, replacement);
         return;
       }

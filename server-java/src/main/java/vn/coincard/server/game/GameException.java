@@ -1,9 +1,6 @@
 package vn.coincard.server.game;
 
-/**
- * Domain errors mapped to ACTION_REJECTED { code, message }.
- * Mirror of server/src/game/errors.ts (GameRuleError hierarchy).
- */
+/** Domain errors mapped to ACTION_REJECTED { code, message }. */
 public abstract class GameException extends RuntimeException {
   public abstract String code();
 
@@ -23,7 +20,6 @@ public abstract class GameException extends RuntimeException {
 
   public static final class InvalidTarget extends GameException {
     public InvalidTarget(String message) { super(message); }
-    public InvalidTarget() { super("Invalid target."); }
     @Override public String code() { return "INVALID_TARGET"; }
   }
 

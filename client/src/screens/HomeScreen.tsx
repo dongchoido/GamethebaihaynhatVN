@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   GameStatus,
   ServerEvents,
@@ -15,17 +15,12 @@ export function HomeScreen() {
   const { setPhase, setSession, setGameState, setLobbyPlayers, setSelectedHeroId, setLastError, lastError, reset } = useGameStore();
   const [playerName, setPlayerName] = useState('');
   const [roomCode, setRoomCode] = useState('');
-  // Handlers cần tên mới nhất nhưng effect chỉ đăng ký 1 lần → dùng ref.
-  const playerNameRef = useRef(playerName);
-  playerNameRef.current = playerName;
-
   useEffect(() => {
     const stored = loadStoredSession();
     const socket = socketService.connect(stored?.sessionToken);
 
     const onRoomCreated = (res: RoomCreatedResponse) => {
-      const name = playerNameRef.current.trim();
-      setSession({ roomCode: res.roomCode, playerId: res.playerId, sessionToken: res.sessionToken, playerName: name });
+      setSession({ roomCode: res.roomCode, playerId: res.playerId, sessionToken: res.sessionToken });
       setLobbyPlayers(res.players);
       socketService.setSessionToken(res.sessionToken);
       setPhase('lobby');
@@ -44,8 +39,7 @@ export function HomeScreen() {
         }
         return;
       }
-      const name = playerNameRef.current.trim();
-      setSession({ roomCode: res.roomCode, playerId: res.playerId, sessionToken: res.sessionToken, playerName: name });
+      setSession({ roomCode: res.roomCode, playerId: res.playerId, sessionToken: res.sessionToken });
       setLobbyPlayers(res.players);
       socketService.setSessionToken(res.sessionToken);
       setPhase('lobby');

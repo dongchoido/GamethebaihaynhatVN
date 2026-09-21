@@ -1,7 +1,7 @@
 // E2E: mô phỏng 2 browser chơi qua WebSocket thật (server Java).
 const { connect } = require('./e2e-ws.cjs');
 
-const URL = 'http://localhost:3000';
+const URL = process.env.GAME_URL || 'http://localhost:3000';
 const results = [];
 const check = (name, ok) => {
   results.push([name, ok]);
@@ -30,16 +30,14 @@ async function main() {
   const created = await createdPromise;
   check('ROOM_CREATED có roomCode 6 ký tự', created.roomCode && created.roomCode.length === 6);
   const roomCode = created.roomCode;
-  await p1.reconnect();
-  p1.emit('RECONNECT_GAME', { sessionToken: created.sessionToken });
 
   // P2 join
   const joinedPromise = once(p2, 'PLAYER_JOINED');
+  const p1JoinedPromise = once(p1, 'PLAYER_JOINED');
   p2.emit('JOIN_ROOM', { roomCode, playerName: 'Bob' });
   const joined = await joinedPromise;
+  await p1JoinedPromise;
   check('PLAYER_JOINED đủ 2 người', joined.players && joined.players.length === 2);
-  await p2.reconnect();
-  p2.emit('RECONNECT_GAME', { sessionToken: joined.sessionToken });
 
   // Cả 2 chọn hero
   const startedPromise = once(p1, 'GAME_STARTED');
@@ -70,12 +68,11 @@ async function main() {
     return c.effects.length > 0 && c.effects.every((e) => NO_TARGET.has(e.target));
   };
   // Spell có-target đánh vào hero địch (nếu effect cho phép)
-  const isTargetedAtHero = (c, mana, foeHeroId) =>
+  const isTargetedAtHero = (c, mana) =>
     c.manaCost <= mana &&
     c.type === 'SPELL' &&
     c.effects.length > 0 &&
     c.effects.every((e) => e.target === 'ENEMY_CHARACTER' || e.target === 'ENEMY_HERO');
-  const waitState = (sock) => once(sock, 'GAME_STATE_UPDATED').then((r) => r.gameState);
   // Đợi state có tiến triển thật (bỏ qua packet cũ đến muộn giữa 2 connections).
   const waitProgress = (sock, isProgress, timeoutMs = 10000) =>
     new Promise((resolve, reject) => {
@@ -166,8 +163,6 @@ async function main() {
   const foeId = ownerId === aliceId ? bobId : aliceId;
   const ownerSock = ownerId === aliceId ? p1 : p2;
   const foeSock = ownerId === aliceId ? p2 : p1;
-  const ownerNow = cur.players.find((p) => p.playerId === ownerId);
-
   // Summoning sickness: nếu vừa summon trong turn này thì tấn bị reject
   // (trừ minion CHARGE — keywords thật từ DB nên charge tấn ngay được).
   const foeBefore = () => cur.players.find((p) => p.playerId === foeId).hero.health;

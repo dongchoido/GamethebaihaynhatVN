@@ -6,7 +6,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-/** Mirror of server/src/game/GameEngine.ts */
+/** Authoritative validator and executor for game actions. */
 public class GameEngine {
   private final Map<String, Game> games = new ConcurrentHashMap<>();
   private final EffectResolver resolver = new EffectResolver();
@@ -54,7 +54,7 @@ public class GameEngine {
             card.keywords().contains("TAUNT")));
       } else {
         for (CardTypes.EffectDefinition effect : card.effects()) {
-          resolver.resolve(game, player, opponent, effect, targetForEffect(effect, targetId));
+          resolver.resolve(player, opponent, effect, targetForEffect(effect, targetId));
         }
         player.removeDeadMinions();
         opponent.removeDeadMinions();
@@ -99,13 +99,13 @@ public class GameEngine {
     Player player = game.getPlayerById(playerId);
     Hero hero = player.heroState();
     assertActivePlayer(game, playerId);
-    if (player.currentMana() < hero.powerCost) throw new GameException.NotEnoughMana();
-    HeroPower power = HeroPower.forClass(hero.heroClass);
+    if (player.currentMana() < hero.getPowerCost()) throw new GameException.NotEnoughMana();
+    HeroPower power = HeroPower.forClass(hero.getHeroClass());
     power.validate(player);
     List<Runnable> undo = new ArrayList<>();
     for (Player p : game.getPlayers()) undo.add(p.checkpoint());
     try {
-      player.spendMana(hero.powerCost);
+      player.spendMana(hero.getPowerCost());
       power.execute(game, player);
       checkWinner(game);
     } catch (RuntimeException error) {

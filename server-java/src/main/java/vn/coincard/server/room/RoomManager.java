@@ -7,7 +7,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import vn.coincard.server.game.GameException;
 
-/** Mirror of server/src/room/RoomManager.ts with O(1) socket/session indexes. */
+/** Owns rooms and O(1) socket/session indexes. */
 @org.springframework.stereotype.Component
 public class RoomManager {
   private final Map<String, Room> rooms = new ConcurrentHashMap<>();
@@ -64,6 +64,6 @@ public class RoomManager {
       if (p.socketId != null) sockets.remove(p.socketId);
       sessions.remove(p.sessionToken);
     }
-    rooms.remove(room.roomCode);
+    rooms.remove(room.getRoomCode());
   }
 }

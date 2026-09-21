@@ -1,7 +1,7 @@
 // Negative tests: lỗi client không được giết server.
 const { connect } = require('./e2e-ws.cjs');
 
-const URL = 'http://localhost:3000';
+const URL = process.env.GAME_URL || 'http://localhost:3000';
 let pass = 0;
 let fail = 0;
 const check = (name, ok) => {

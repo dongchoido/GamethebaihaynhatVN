@@ -4,12 +4,11 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-/** Port of the core GameEngine.test.ts cases. */
+/** Core game-rule tests. */
 class GameEngineTest {
   private GameEngine engine;
 
@@ -89,7 +88,7 @@ class GameEngineTest {
     engine.playCard("game-1", "p1", card.id(), null);
     Minion minion = p1.getBoard().get(0);
     assertThrows(GameException.class,
-        () -> engine.attack("game-1", "p1", minion.instanceId, "p2"));
+        () -> engine.attack("game-1", "p1", minion.getInstanceId(), "p2"));
   }
 
   @Test
@@ -111,7 +110,7 @@ class GameEngineTest {
     Minion minion = p1.getBoard().get(0);
     engine.endTurn("game-1", "p1");
     engine.endTurn("game-1", "p2");
-    engine.attack("game-1", "p1", minion.instanceId, "p2");
+    engine.attack("game-1", "p1", minion.getInstanceId(), "p2");
     assertTrue(game.isFinished());
     assertEquals("p1", game.getWinnerId());
   }
@@ -276,8 +275,8 @@ class GameEngineTest {
     p1.addToHand(charger);
     engine.playCard("game-1", "p1", "chg", null);
     assertEquals(1, p1.cardsPlayed());
-    Minion m = p1.getBoard().stream().filter(x -> x.cardId.equals("chg")).findFirst().orElseThrow();
-    engine.attack("game-1", "p1", m.instanceId, "p2");
+    Minion m = p1.getBoard().stream().filter(x -> x.getCardId().equals("chg")).findFirst().orElseThrow();
+    engine.attack("game-1", "p1", m.getInstanceId(), "p2");
     assertEquals(3, p1.damageDealt());
     assertEquals(27, p2.heroState().currentHealth());
   }

@@ -1,12 +1,11 @@
 package vn.coincard.server.game;
 
-/** Mirror of server/src/game/Minion.ts */
-public class Minion {
-  private int health;
-  private int maximumHealth;
+import vn.coincard.server.model.GameCharacter;
+
+/** Mutable minion — Inheritance: Minion là một GameCharacter. */
+public class Minion extends GameCharacter {
   private int attack;
   private boolean canAttackValue;
-  private boolean summonedThisTurnValue;
 
   public Minion(String instanceId, String cardId, String name,
       int attack, int health, String ownerId, boolean hasCharge, String imagePath) {
@@ -15,50 +14,49 @@ public class Minion {
 
   public Minion(String instanceId, String cardId, String name,
       int attack, int health, String ownerId, boolean hasCharge, String imagePath, boolean hasTaunt) {
+    super(health);
     this.instanceId = instanceId;
     this.cardId = cardId;
     this.name = name;
     this.attack = attack;
-    this.health = health;
-    this.maximumHealth = health;
     this.ownerId = ownerId;
-    this.hasCharge = hasCharge;
     this.imagePath = imagePath;
     this.hasTaunt = hasTaunt;
-    this.summonedThisTurnValue = !hasCharge;
     this.canAttackValue = hasCharge;
   }
 
-  public final String instanceId;
-  public final String cardId;
-  public final String name;
-  public final String ownerId;
-  public final boolean hasCharge;
-  public final String imagePath;
-  public final boolean hasTaunt;
+  private final String instanceId;
+  private final String cardId;
+  private final String name;
+  private final String ownerId;
+  private final String imagePath;
+  private final boolean hasTaunt;
 
-  public int currentHealth() { return health; }
+  public String getInstanceId() { return instanceId; }
+  public String getCardId() { return cardId; }
+  public String getName() { return name; }
+  public String getOwnerId() { return ownerId; }
+  public String getImagePath() { return imagePath; }
+  public boolean isHasTaunt() { return hasTaunt; }
+  public boolean hasTaunt() { return hasTaunt; }
+
   public int currentAttack() { return attack; }
-  public int maxHealth() { return maximumHealth; }
   public boolean canAttack() { return canAttackValue; }
-  public boolean summonedThisTurn() { return summonedThisTurnValue; }
 
   public void startTurn() {
-    summonedThisTurnValue = false;
     canAttackValue = true;
   }
 
-  /** Returns actual damage applied (no overkill). */
+  @Override
   public int takeDamage(int amount) {
-    if (amount < 0) throw new IllegalArgumentException("Damage không hợp lệ.");
-    int actual = Math.min(Math.max(0, health), amount);
-    health -= actual;
-    return actual;
+    int before = getCurrentHealth();
+    super.takeDamage(amount);
+    return before - getCurrentHealth();
   }
 
-  public void heal(int amount) {
-    if (amount < 0) throw new IllegalArgumentException("Heal không hợp lệ.");
-    health = Math.min(maximumHealth, health + amount);
+  @Override
+  public String getCharacterType() {
+    return "MINION";
   }
 
   public void modifyAttack(int delta) {
@@ -66,20 +64,24 @@ public class Minion {
   }
 
   public void modifyHealth(int delta) {
-    health += delta;
-    if (delta > 0) maximumHealth += delta;
+    int newHealth = getCurrentHealth() + delta;
+    int newMax = getMaxHealth() + Math.max(0, delta);
+    setMaxHealth(newMax);
+    setCurrentHealth(newHealth);
   }
 
   public void markAsAttacked() { canAttackValue = false; }
-  public boolean isDead() { return health <= 0; }
 
-  /** Opaque undo. */
+  /** Opaque undo — Memento (health + attack + canAttack). */
+  @Override
   public Runnable checkpoint() {
-    int h = health, mh = maximumHealth, a = attack;
-    boolean c = canAttackValue, s = summonedThisTurnValue;
+    Runnable base = checkpointHealth();
+    int a = attack;
+    boolean c = canAttackValue;
     return () -> {
-      health = h; maximumHealth = mh; attack = a;
-      canAttackValue = c; summonedThisTurnValue = s;
+      base.run();
+      attack = a;
+      canAttackValue = c;
     };
   }
 }

@@ -13,7 +13,7 @@ import vn.coincard.server.game.effects.AreaEffects;
 import vn.coincard.server.game.effects.EffectContext;
 import vn.coincard.server.game.effects.ICardEffect;
 
-/** Mirror of EffectResolver.ts (strategy registry + fail-closed targets). */
+/** Card-effect strategy registry with fail-closed target validation. */
 public class EffectResolver {
   private final Random random = new Random();
 
@@ -43,13 +43,13 @@ public class EffectResolver {
     }
   }
 
-  public void resolve(Game game, Player player, Player opponent,
+  public void resolve(Player player, Player opponent,
       CardTypes.EffectDefinition effect, String targetId) {
     if ("RANDOM_ENEMY".equals(effect.target())) {
-      resolveRandomEnemies(game, player, opponent, effect);
+      resolveRandomEnemies(player, opponent, effect);
       return;
     }
-    Object target = pickTarget(game, player, opponent, effect, targetId);
+    Object target = pickTarget(player, opponent, effect, targetId);
     List<Minion> areaTargets = null;
     if ("ALL_MINIONS".equals(effect.target())) {
       areaTargets = new ArrayList<>(player.getBoard());
@@ -59,10 +59,10 @@ public class EffectResolver {
     } else if ("ALL_FRIENDLY_MINIONS".equals(effect.target())) {
       areaTargets = new ArrayList<>(player.getBoard());
     }
-    buildStrategy(effect).execute(new EffectContext(game, player, opponent, target, effect.value(), areaTargets));
+    buildStrategy(effect).execute(new EffectContext(player, opponent, target, areaTargets));
   }
 
-  private void resolveRandomEnemies(Game game, Player player, Player opponent,
+  private void resolveRandomEnemies(Player player, Player opponent,
       CardTypes.EffectDefinition effect) {
     List<Object> pool = new ArrayList<>(opponent.getBoard());
     pool.add(opponent);
@@ -70,21 +70,16 @@ public class EffectResolver {
     ICardEffect strategy = buildStrategy(effect);
     for (int i = 0; i < pickCount; i++) {
       Object picked = pool.remove(random.nextInt(pool.size()));
-      strategy.execute(new EffectContext(game, player, opponent, picked, effect.value(), null));
+      strategy.execute(new EffectContext(player, opponent, picked, null));
     }
   }
 
   private Object pickTarget(Player player, Player opponent,
       CardTypes.EffectDefinition effect, String targetId) {
-    return pickTarget(null, player, opponent, effect, targetId);
-  }
-
-  private Object pickTarget(Game game, Player player, Player opponent,
-      CardTypes.EffectDefinition effect, String targetId) {
     List<Object> candidates = new ArrayList<>(validTargets(player, opponent, effect));
     if (targetId != null) {
       return candidates.stream().filter(t ->
-          (t instanceof Minion m && m.instanceId.equals(targetId))
+          (t instanceof Minion m && m.getInstanceId().equals(targetId))
               || (t instanceof Player p && p.id().equals(targetId)))
           .findFirst()
           .orElseThrow(() -> new GameException.InvalidTarget("Target không thuộc danh sách hợp lệ."));
@@ -125,31 +120,12 @@ public class EffectResolver {
     return factory.apply(effect);
   }
 
-  /** State helpers kept here so network layer serializes identically to TS. */
+  /** Delegates to mapper — giữ API cũ cho tương thích. */
   public static Map<String, Object> minionToState(Minion m) {
-    Map<String, Object> m2 = new LinkedHashMap<>();
-    m2.put("instanceId", m.instanceId);
-    m2.put("cardId", m.cardId);
-    m2.put("name", m.name);
-    m2.put("attack", m.currentAttack());
-    m2.put("health", m.currentHealth());
-    m2.put("maxHealth", m.maxHealth());
-    m2.put("canAttack", m.canAttack());
-    m2.put("hasTaunt", m.hasTaunt);
-    m2.put("imagePath", m.imagePath);
-    return m2;
+    return vn.coincard.server.mapper.GameStateMapper.toMinionState(m);
   }
 
   public static Map<String, Object> heroToState(Hero h) {
-    Map<String, Object> m = new LinkedHashMap<>();
-    m.put("heroId", h.heroId);
-    m.put("name", h.name);
-    m.put("heroClass", h.heroClass);
-    m.put("health", h.currentHealth());
-    m.put("maxHealth", h.maxHealth());
-    m.put("imagePath", h.imagePath);
-    m.put("powerName", h.powerName);
-    m.put("powerCost", h.powerCost);
-    return m;
+    return vn.coincard.server.mapper.GameStateMapper.toHeroState(h);
   }
 }

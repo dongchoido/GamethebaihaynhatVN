@@ -7,7 +7,6 @@ import {
   type CardDefinition,
   type GameOverResponse,
   type GameStatePayload,
-  type TurnChangedResponse,
 } from '@coincard/shared';
 import { socketService } from '../socket/socketService';
 import { useConnection } from '../socket/useConnection';
@@ -115,9 +114,6 @@ export function GameScreen() {
       setEndTurnPending(false);
       setDrawPending(false);
     };
-    const onTurnChanged = (_res: TurnChangedResponse) => {
-      // statusMessage trong state đã đủ; giữ handler để log/debug.
-    };
     const onGameOver = (_res: GameOverResponse) => {
       if (_res.winnerId === session?.playerId) playSound(SOUND.victory);
       setPhase('over');
@@ -128,14 +124,12 @@ export function GameScreen() {
     socket.on(ServerEvents.PLAYER_JOINED, onJoined);
     socket.on(ServerEvents.GAME_STATE_UPDATED, onGameState);
     socket.on(ServerEvents.ACTION_REJECTED, onRejected);
-    socket.on(ServerEvents.TURN_CHANGED, onTurnChanged);
     socket.on(ServerEvents.GAME_OVER, onGameOver);
     return () => {
       socket.off(ServerEvents.PLAYER_DISCONNECTED, onLeft);
       socket.off(ServerEvents.PLAYER_JOINED, onJoined);
       socket.off(ServerEvents.GAME_STATE_UPDATED, onGameState);
       socket.off(ServerEvents.ACTION_REJECTED, onRejected);
-      socket.off(ServerEvents.TURN_CHANGED, onTurnChanged);
       socket.off(ServerEvents.GAME_OVER, onGameOver);
     };
   }, [setGameState, setPhase, setLastError, reset, session?.playerId]);
@@ -238,10 +232,6 @@ export function GameScreen() {
     if (!isMine && selectedAttackerId) {
       if (oppHasMinions) {
         setLastError('MINIONS_BLOCK_HERO: Đối thủ còn minion — phải tấn công minion trước.');
-        return;
-      }
-      if (oppHasTaunt) {
-        setLastError('TAUNT_REQUIRED: Phải tấn công quái Taunt trước.');
         return;
       }
       socketService.attack({

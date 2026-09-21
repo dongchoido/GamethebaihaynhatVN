@@ -1,20 +1,8 @@
 import type { GameState } from './game.js';
 
-export interface CreateRoomPayload {
-  playerName: string;
-}
-
 export interface JoinRoomPayload {
   roomCode: string;
   playerName: string;
-}
-
-export interface ReconnectPayload {
-  sessionToken: string;
-}
-
-export interface RematchPayload {
-  gameId: string;
 }
 
 export interface RoomCreatedResponse {
@@ -32,14 +20,6 @@ export interface PlayerJoinedResponse {
   players: { playerId: string; name: string; heroClass?: string | null; ready?: boolean; connected?: boolean }[];
 }
 
-export interface RoomReadyResponse {
-  roomCode: string;
-}
-
-export interface SelectDeckPayload {
-  heroId: string;
-}
-
 export interface PlayCardPayload {
   gameId: string;
   cardInstanceId: string;
@@ -55,11 +35,6 @@ export interface AttackPayload {
 export interface ActionRejectedResponse {
   code: string;
   message: string;
-}
-
-export interface TurnChangedResponse {
-  activePlayerId: string;
-  turn: number;
 }
 
 export interface GameOverResponse {

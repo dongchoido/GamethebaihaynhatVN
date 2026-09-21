@@ -1,149 +1,158 @@
-# CoinCard — Game thẻ bài online 2 người chơi
+# CoinCard - Game thẻ bài online 2 người chơi
 
-Bài tập lớn môn OOP (nhóm D24CN09-B PTIT). Gameplay lấy cảm hứng Hearthstone,
-toàn bộ code/database/cấu trúc tự xây dựng. Server là authoritative:
-client chỉ gửi action, mọi damage/mana/draw/HP do server quyết.
+Bài tập lớn môn OOP (nhóm D24CN09-B PTIT). Server là authoritative: client chỉ
+gửi action, còn luật, mana, damage, rút bài và kết quả do Java backend quyết định.
 
-## Tech stack
-- Client: React + TypeScript + Vite (`client/`, port 5173)
-- Server Java: Spring Boot + WebSocket thuần + SQLite (`server-java/`, port 3000) — **backend chính**
-- Server Node cũ: Node.js + Express + Socket.IO (`server/`, port 3000) — giữ để tham khảo
-- DB: SQLite (`data/coincard.db` cho bản Java; `server/data/coincard.db` cho bản Node)
-- Shared types/events: `shared/` (client dùng)
+## Công nghệ
+
+- Backend: Java 17, Spring Boot 3, WebSocket, JDBC và SQLite (`server-java/`).
+- Frontend: React 19, TypeScript và Vite (`client/`).
+- DTO/event phía trình duyệt: TypeScript (`shared/`).
+- Dữ liệu bài: `data/cards.json`; database runtime: `data/coincard.db`.
+
+Không còn backend Node, Socket.IO hoặc Prisma. TypeScript chỉ phục vụ giao diện
+trình duyệt và kiểu dữ liệu client.
 
 ## Yêu cầu
-- Node.js >= 18 (đã test với Node 24) cho client
-- npm >= 9
-- Java >= 17 (đã test với Java 26) + Maven 3.9 (`npm run` script dùng bản trong `.tools/`) cho server Java
 
-## Cách chạy game bằng server Java
+- Java 17 trở lên.
+- Node.js 18 trở lên và npm 9 trở lên.
+- Không cần cài Maven; project có Maven Wrapper trong `server-java/`.
+
+## Chạy development
+
+Từ thư mục gốc project:
 
 ```bash
-# 1. Cài dependencies client (từ thư mục gốc project)
 npm install
-
-# 2. Build client production (server Java phục vụ thư mục này)
-npm run build:client
-
-# 3. Chạy server Java (tự tạo bảng + seed 34 lá + 5 hero nếu DB trống)
-npm run dev:java
-```
-
-Mở `http://localhost:3000` trên 2 tab để chơi. Muốn chạy dev client riêng (hot reload):
-`npm run dev:client` rồi mở `http://localhost:5173` (Vite proxy `/ws` về Java).
-
-```bash
-npm run test:java   # unit test Java (JUnit, 16 test engine)
-npm run build:java  # đóng gói jar
-npm run start:java  # chạy jar (cần build client + DB trước)
-```
-
-## Cách chạy game (lần đầu)
-
-Trên Windows PowerShell, nếu `npm` báo lỗi tìm `AppData\Roaming\npm\node_modules\npm\bin\npm-cli.js`, dùng `npm.cmd` thay cho `npm` trong các lệnh bên dưới. Môi trường hiện đã có Node.js và npm chính thức tại `C:\Program Files\nodejs`.
-
-```bash
-# 1. Cài dependencies (từ thư mục gốc project)
-npm install
-
-# 2. Build shared types
-npm run build:shared
-
-# 3. Tạo file .env cho server
-cd server
-copy .env.example .env      # Windows
-# cp .env.example .env      # macOS/Linux
-cd ..
-
-# 4. Tạo database + seed 34 lá bài + 5 hero
-npm run prisma:migrate --workspace server
-npm run seed
-
-# 5. Chạy cả server + client
 npm run dev
 ```
 
-## Cách chơi (2 người trên localhost)
-1. Mở **2 tab** trình duyệt vào `http://localhost:5173`
-2. Tab 1: nhập tên → **Tạo phòng** → được mã phòng (vd `A8F3K2`) → **chọn hero**
-3. Tab 2: nhập tên + mã phòng → **Tham gia** → **chọn hero**
-4. Đủ 2 người chọn hero → trận đấu bắt đầu, đánh theo lượt:
-   - Click lá bài để đánh (spell cần target thì click tiếp vào mục tiêu)
-   - Click minion của mình rồi click mục tiêu để tấn công
-   - Nút hero power, nút END TURN, Đầu hàng
-5. Hero nào hết HP trước thì thua. Kết quả lưu vào database.
+Mở `http://localhost:5173`. Lệnh này chạy Spring Boot tại cổng 3000 và Vite tại
+cổng 5173; Vite proxy `/ws` tới Java backend.
 
-## Cách chơi giữa 2 máy cùng Wi-Fi/LAN
-
-Máy A chạy server và không được tắt trong lúc chơi. Máy B chỉ cần trình duyệt, không cần cài Node.js hay database.
+## Chạy production
 
 ```bash
-# Chạy từ thư mục gốc project trên máy A
-npm run dev:lan
+npm install
+npm run build
+npm start
 ```
 
-Trên máy A, chạy `ipconfig` và lấy địa chỉ IPv4 của card Wi-Fi hoặc Ethernet, ví dụ `192.168.1.50`. Cả hai máy mở:
+Mở `http://localhost:3000`. Spring Boot phục vụ cả React build, `/health` và
+WebSocket `/ws`. Schema SQLite và catalog 34 lá/5 hero được đồng bộ khi khởi động.
 
-```text
-http://192.168.1.50:5173
-```
+Các đường dẫn có thể đổi bằng biến môi trường:
 
-Máy A chọn **Tạo phòng**, máy B nhập tên và mã phòng rồi chọn **Tham gia**.
+- `PORT`, `HOST`
+- `COINCARD_DB_PATH`
+- `COINCARD_CARDS_PATH`
+- `COINCARD_CLIENT_DIST`
 
-Nếu máy B không mở được trang, trên máy A kiểm tra Windows Firewall và cho phép TCP port 5173 trong mạng **Private**. Có thể tạo rule bằng PowerShell chạy với quyền Administrator:
+## Chơi hai người
+
+1. Người thứ nhất nhập tên, tạo phòng và chọn hero.
+2. Người thứ hai nhập tên, mã phòng rồi chọn hero.
+3. Đủ hai người chọn hero thì trận tự bắt đầu.
+4. Click bài để chơi; spell cần mục tiêu thì click mục tiêu tiếp theo.
+5. Click minion của mình rồi click minion/hero địch để tấn công.
+6. Có thể rút thêm một lá mỗi lượt, dùng hero power, kết thúc lượt hoặc đầu hàng.
+
+Luật đầy đủ nằm tại `docs/GAME_RULES.md`.
+
+## LAN và Internet
+
+Build production trước, sau đó trên PowerShell:
 
 ```powershell
-New-NetFirewallRule -DisplayName "CoinCard LAN 5173" -Direction Inbound -Protocol TCP -LocalPort 5173 -Action Allow -Profile Private
+$env:HOST="0.0.0.0"
+npm start
 ```
 
-Không mở port 3000 cho máy khác; Vite proxy Socket.IO tới backend `127.0.0.1:3000` trên máy A. Nếu hai thiết bị dùng Wi-Fi khách hoặc router bật AP/client isolation, chúng không thể kết nối trực tiếp dù cùng tên mạng; hãy chuyển sang mạng Private thông thường.
-
-## Chơi khác mạng bằng link Internet tạm
-
-Để chơi qua Wi-Fi/4G khác nhau, dùng bản production một cổng và Cloudflare Quick Tunnel. Máy chủ vẫn giữ database và game state; máy khách chỉ cần trình duyệt.
+Hai máy cùng mạng mở `http://<IPv4-máy-chủ>:3000`. Nếu cần link Internet tạm,
+giữ server chạy và mở terminal khác:
 
 ```bash
-# Lần đầu hoặc sau khi sửa code
-npm run build
-
-# Terminal 1: chạy server + giao diện production
-npm start
-
-# Terminal 2: tạo link HTTPS tạm
 npm run tunnel
 ```
 
-Gửi link `https://....trycloudflare.com` được in ở Terminal 2 cho người chơi còn lại. Cả hai mở cùng link đó. Không mở cổng 3000/5173 trên router; máy chủ phải giữ cả hai terminal hoạt động. Link Quick Tunnel là link tạm và thường đổi sau khi chạy lại tunnel.
+## Kiểm thử
 
-`npm start` cần file `server/.env` được tạo từ `server/.env.example`, database đã migrate/seed và client đã build. `cloudflared` phải được cài riêng trên máy chủ và có trong PATH.
-
-Luật chi tiết: `docs/GAME_RULES.md`.
-
-## Scripts hay dùng
 ```bash
-npm run dev          # chạy server + client
-npm run build        # build shared + server + client production
-npm start            # chạy production server tại cổng 3000
-npm run tunnel       # tạo link HTTPS tạm tới localhost:3000 (cần cloudflared)
-npm run verify       # build + unit + integration (database thử riêng)
-npm test             # unit test GameEngine
-npm run test:integration  # integration với database thử riêng (migrate/seed/tái đấu/cleanup)
-npm run test:e2e     # test 2 người chơi qua socket thật (cần server chạy, database thật)
-npm run test:e2e-neg # test các case lỗi (sai mã phòng, phòng đầy...)
-node e2e-tabs.cjs        # test 2 tab trình duyệt (cần server + client dev chạy)
-node e2e-connection.cjs  # test reconnect/mất mạng (cần server chạy)
+npm run verify               # typecheck + 47 JUnit + build + production E2E
+npm run test                 # Java unit/regression/database tests
+npm run test:e2e             # 2 người chơi; cần Java server đang chạy
+npm run test:e2e-neg         # payload/action lỗi
+npm run test:e2e-connection  # reconnect và tiếp tục trận
+npm run test:e2e-tabs        # cần Java server + Vite dev
 ```
 
-Trong `client/`: `npm run dev` (chỉ client), `npm run build`, `npx tsc --noEmit -p tsconfig.json` (check type).
-Trong `server/`: `npm run dev` (chỉ server), `npm run seed` (seed lại bài).
+## OOP — trả lời khi bảo vệ
 
-## Docs
-- `docs/ARCHITECTURE.md` — kiến trúc client/server/shared
-- `docs/ASSET_MAPPING.md` — mapping ảnh → component gameplay
-- `docs/GAME_RULES.md` — luật chơi
-- `docs/SOCKET_PROTOCOL.md` — giao thức socket
-- `docs/DATABASE.md` — schema + seed
+### Encapsulation
+State `private` và chỉ đổi qua behavior: `Player.spendMana()`, `Hero.takeDamage()/heal()`, `Minion.takeDamage()/modifyAttack()`, `Deck.drawOne()`, `Game.switchTurn()`.
+Collection không expose mutable: `Player.getBoard()` → `unmodifiableList`, `handCards()` → `unmodifiableList`, `Game.getPlayers()` → `copy`.
+→ File: `server-java/src/main/java/vn/coincard/server/game/Player.java:31`, `model/GameCharacter.java:10`, `game/Deck.java:18`
 
-Luồng code để học: click lá bài → `GameScreen` → `socketService` →
-`SocketHandler` → `GameService` → `GameEngine` → domain
-(`Game`/`Player`/`Hero`/`Minion`) → broadcast `GameState` → UI render.
+### Inheritance
+`GameCharacter` (abstract) → `Hero` và `Minion` kế thừa chung `takeDamage/heal/isDead/checkpoint`.
+→ File: `server-java/src/main/java/vn/coincard/server/model/GameCharacter.java:7`, `game/Hero.java:6`, `game/Minion.java:6`
+
+### Abstraction
+`EffectStrategy` (`ICardEffect`), `HeroPower`, `GameRepository/CatalogRepository`, `MessageSender`.
+→ File: `game/effects/ICardEffect.java:3`, `game/HeroPower.java:7`, `db/Repositories.java:8`, `net/MessageSender.java:3`
+
+### Polymorphism
+`GameEngine` gọi `strategy.validate/ execute` không biết cụ thể `DamageEffect/HealEffect/DestroyEffect/TransformEffect/...`
+→ File: `game/EffectResolver.java:20`, `game/effects/*`, `game/HeroPower.java:17`
+
+### SOLID
+- SRP: `GameService` (gameplay) / `RoomService` (phòng) / `GamePersistenceService` (lưu DB) / `GameStateMapper` (serialize) → `server-java/src/main/java/vn/coincard/server/service/*`, `mapper/GameStateMapper.java:12`
+- OCP: thêm effect mới chỉ thêm class `EffectStrategy` không sửa resolver
+- LSP: `Hero`/`Minion` dùng như `GameCharacter` trong `GameCharacterTest`
+- ISP: interface nhỏ (`EffectStrategy`, `HeroPower`, `GameRepository`)
+- DIP: `GameService` phụ thuộc `GameRepository` abstraction, không phụ thuộc JDBC
+
+### Design Patterns thực sự dùng
+- Strategy: `EffectStrategy`, `HeroPower`
+- Repository: `GameRepository`/`CatalogRepository` → `Jdbc*`
+- Memento: `checkpoint()` trả `Runnable` undo trong `Player/Hero/Minion/Deck` → `GameEngine.playCard:43`
+- Command: `GameAction` functional interface trong `GameService:234`
+- Factory: `Deck` shuffle, `TokenCards` tạo token
+
+## Cấu trúc
+
+```text
+server-java/  Spring Boot, domain game, WebSocket, room, JDBC và JUnit (Java chính)
+  src/main/java/vn/coincard/server/
+    model/GameCharacter.java      # Inheritance
+    game/Hero.java, Minion.java   # Domain
+    effect/*, power/*             # Strategy
+    combat/CombatService.java
+    service/GameService, RoomService, GamePersistenceService  # SRP
+    mapper/GameStateMapper.java   # Serialization tách biệt
+    repository/*, db/*            # Repository
+    websocket/*, net/*            # WebSocket
+client/       React UI, WebSocket client và assets (chỉ frontend)
+shared/       event, payload và state type dùng bởi React
+data/         card catalog; file SQLite runtime bị gitignore
+docs/         kiến trúc, database, protocol, luật và báo cáo test
+```
+
+Luồng action: `GameScreen` -> `socketService` -> `/ws` ->
+`GameWebSocketHandler` -> `GameService` -> `GameEngine` -> domain (`Game/Player/Hero/Minion` là `GameCharacter`) -> `GameStateMapper` -> snapshot riêng
+cho từng người chơi.
+
+## Build Java độc lập
+
+```bash
+# Windows
+.\server-java\mvnw.cmd clean test
+.\server-java\mvnw.cmd package
+# Linux/macOS
+./server-java/mvnw clean test
+./server-java/mvnw package
+# NPM wrapper (cross-platform)
+npm run test:java
+npm run build:java
+```

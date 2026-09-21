@@ -1,8 +1,5 @@
-// CompatSocket: WebSocket thuần nói cùng envelope {event, data} với server Java,
-// nhưng giữ nguyên mặt API mà app đang dùng (on/off/emit/auth/connected/disconnect
-// + event 'connect'/'disconnect'/'connect_error'). Thay thế socket.io-client.
+// WebSocket client dùng envelope {event, data} và phát event trạng thái kết nối.
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Handler = (data?: any) => void;
 
 function wsUrl(): string {

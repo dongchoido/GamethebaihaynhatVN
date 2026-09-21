@@ -1,4 +1,4 @@
-// Mô phỏng đúng 2 tab browser: qua proxy :5173 + reauth/RECONNECT như client.
+// Mô phỏng đúng 2 tab browser qua proxy :5173.
 const { connect } = require('./e2e-ws.cjs');
 
 const URL = 'http://localhost:5173';
@@ -18,12 +18,6 @@ function once(socket, event, timeoutMs = 10000) {
       resolve(data);
     });
   });
-}
-
-// Client-faithful: sau khi có token → reconnect rồi auto RECONNECT_GAME.
-async function reauth(socket, token) {
-  await socket.reconnect();
-  socket.emit('RECONNECT_GAME', { sessionToken: token });
 }
 
 function waitTurn(socket, gameId, minTurn, timeoutMs = 12000) {
@@ -49,13 +43,11 @@ async function main() {
   const createdP = once(tab1, 'ROOM_CREATED');
   tab1.emit('CREATE_ROOM', { playerName: 'Tab1' });
   const created = await createdP;
-  await reauth(tab1, created.sessionToken);
   const aliceId = created.playerId;
 
   const joinedP = once(tab2, 'PLAYER_JOINED');
   tab2.emit('JOIN_ROOM', { roomCode: created.roomCode, playerName: 'Tab2' });
   const joined = await joinedP;
-  await reauth(tab2, joined.sessionToken);
   const bobId = joined.playerId;
 
   const startedP = once(tab1, 'GAME_STARTED');
@@ -86,7 +78,6 @@ async function main() {
   check('END TURN không cần đánh bài', true);
 
   // P2 (Bob) chơi 1 lá rồi đánh hero — kiểm tra tab2 nhận đủ state
-  const bob = cur.players.find((p) => p.playerId === bobId);
   // Đảm bảo tới lượt Bob
   if (cur.activePlayerId !== bobId) {
     const pr = waitTurn(tab1, gameId, cur.turn + 1);

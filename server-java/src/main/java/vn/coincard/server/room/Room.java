@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Set;
 import vn.coincard.server.game.GameException;
 
-/** Mirror of server/src/room/Room.ts (max 2 players, session for reconnect). */
+/** Two-player room with reconnect sessions and rematch voting. */
 public class Room {
   private final List<RoomPlayer> players = new ArrayList<>();
   private boolean started;
@@ -18,7 +18,9 @@ public class Room {
     this.roomCode = roomCode;
   }
 
-  public final String roomCode;
+  private final String roomCode;
+
+  public String getRoomCode() { return roomCode; }
 
   public synchronized void addPlayer(RoomPlayer player) {
     if (players.size() >= 2) throw new GameException.RoomFull();
@@ -42,16 +44,16 @@ public class Room {
     return p == null ? null : p.copy();
   }
 
-  public synchronized RoomPlayer findBySocketId(String socketId) {
-    RoomPlayer p = players.stream().filter(x -> socketId.equals(x.socketId)).findFirst().orElse(null);
-    return p == null ? null : p.copy();
-  }
-
   public synchronized void selectHero(String playerId, String heroClass) {
     RoomPlayer p = internal(playerId);
     if (p == null) throw new IllegalArgumentException("Player không tồn tại.");
     p.heroClass = heroClass;
     p.ready = true;
+    touch();
+  }
+
+  public synchronized void clearReady() {
+    for (RoomPlayer player : players) player.ready = false;
     touch();
   }
 
@@ -62,11 +64,9 @@ public class Room {
     touch();
   }
 
-  public synchronized int count() { return players.size(); }
   public synchronized boolean isFull() { return players.size() == 2; }
   public synchronized boolean isStarted() { return started; }
   public synchronized boolean isStarting() { return starting; }
-  public synchronized int getRematchVotes() { return rematchVotes.size(); }
 
   public synchronized void touch() { lastActivityAt = System.currentTimeMillis(); }
 

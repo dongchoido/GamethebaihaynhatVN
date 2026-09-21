@@ -1,6 +1,6 @@
 package vn.coincard.server.game;
 
-/** Game tuning numbers. Mirror of server/src/game/constants.ts */
+/** Game tuning numbers. */
 public final class Constants {
   public static final int MAX_HERO_HEALTH = 30;
   public static final int MAX_MANA = 10;

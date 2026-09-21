@@ -13,24 +13,20 @@ public class DataConfig {
   @Value("${DATABASE_URL:}")
   private String databaseUrl;
 
-  @Value("${coincard.db-url:jdbc:sqlite:../data/coincard.db}")
-  private String fallbackDbUrl;
+  @Value("${coincard.db-url}")
+  private String jdbcUrl;
 
-  private String jdbcUrl() {
-    if (databaseUrl != null && !databaseUrl.isBlank()) {
-      // Reuse server/.env DATABASE_URL ("file:../data/coincard.db" Prisma format).
-      String v = databaseUrl.trim();
-      if (v.startsWith("file:")) return "jdbc:sqlite:" + v.substring("file:".length());
-      return v;
-    }
-    return fallbackDbUrl;
+  private String resolvedJdbcUrl() {
+    if (databaseUrl == null || databaseUrl.isBlank()) return jdbcUrl;
+    String value = databaseUrl.trim();
+    return value.startsWith("file:") ? "jdbc:sqlite:" + value.substring(5) : value;
   }
 
   @Bean
   public DataSource dataSource() {
     DriverManagerDataSource ds = new DriverManagerDataSource();
     ds.setDriverClassName("org.sqlite.JDBC");
-    ds.setUrl(jdbcUrl());
+    ds.setUrl(resolvedJdbcUrl());
     return ds;
   }
 

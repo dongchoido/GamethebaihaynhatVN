@@ -1,6 +1,6 @@
 package vn.coincard.server.game.effects;
 
-/** Mirror of ICardEffect.ts */
+/** Strategy contract for one card effect. */
 public interface ICardEffect {
   void execute(EffectContext context);
 }

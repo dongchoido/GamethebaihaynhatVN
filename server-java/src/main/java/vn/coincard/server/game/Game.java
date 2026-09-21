@@ -2,7 +2,7 @@ package vn.coincard.server.game;
 
 import java.util.List;
 
-/** Mirror of server/src/game/Game.ts */
+/** Mutable state for one authoritative match. */
 public class Game {
   private String status = "WAITING";
   private int turn;
@@ -17,9 +17,15 @@ public class Game {
     this.players = List.of(p1, p2);
   }
 
-  public final String gameId;
-  public final String roomCode;
+  private final String gameId;
+  private final String roomCode;
   private final List<Player> players;
+
+  public String getGameId() { return gameId; }
+  public String getRoomCode() { return roomCode; }
+  // Giữ API cũ cho tương thích (sẽ deprecated)
+  public String gameId() { return gameId; }
+  public String roomCode() { return roomCode; }
 
   public void start() {
     if (!"WAITING".equals(status)) throw new IllegalStateException("Trận đã bắt đầu.");

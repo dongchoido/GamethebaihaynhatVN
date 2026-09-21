@@ -1,7 +1,6 @@
 export enum CardType {
   MINION = 'MINION',
   SPELL = 'SPELL',
-  WEAPON = 'WEAPON',
 }
 
 export enum Rarity {
@@ -28,8 +27,6 @@ export const EFFECT_TARGETS = [
 
 export type EffectTarget = (typeof EFFECT_TARGETS)[number];
 
-// Effect mà client phải chọn target bằng tay — server và client dùng chung
-// để không lệch nhau (trước đây mỗi bên một Set riêng).
 export const EXPLICIT_TARGET_TYPES: ReadonlySet<EffectTarget> = new Set([
   'ENEMY_MINION',
   'FRIENDLY_MINION',
@@ -44,13 +41,13 @@ export function effectNeedsTarget(target: EffectTarget): boolean {
 }
 
 export const EFFECT_TYPES = [
-  'DAMAGE', 'AOE_DAMAGE', 'HEAL', 'DRAW', 'BUFF_ATTACK', 'BUFF_HEALTH',
-  'MULTIPLY_HEALTH', 'SUMMON', 'TRANSFORM', 'DESTROY', 'DESTROY_ALL',
+  'DAMAGE', 'AOE_DAMAGE', 'HEAL', 'BUFF_ATTACK', 'BUFF_HEALTH',
+  'MULTIPLY_HEALTH', 'TRANSFORM', 'DESTROY', 'DESTROY_ALL',
 ] as const;
 
 export type EffectType = (typeof EFFECT_TYPES)[number];
 
-export const CARD_KEYWORDS = ['TAUNT', 'CHARGE', 'DIVINE_SHIELD'] as const;
+export const CARD_KEYWORDS = ['TAUNT', 'CHARGE'] as const;
 export type CardKeyword = (typeof CARD_KEYWORDS)[number];
 
 export interface EffectDefinition {
@@ -77,13 +74,4 @@ export interface CardDefinition {
   effects: EffectDefinition[];
   keywords: CardKeyword[];
   collectible: boolean;
-}
-
-export interface HeroDefinition {
-  id: string;
-  name: string;
-  heroClass: Exclude<HeroClass, HeroClass.NEUTRAL>;
-  powerName: string;
-  powerCost: number;
-  imagePath: string;
 }

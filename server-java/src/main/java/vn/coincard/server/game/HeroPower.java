@@ -3,7 +3,7 @@ package vn.coincard.server.game;
 import java.util.Map;
 import java.util.UUID;
 
-/** Mirror of HeroPower.ts: IHeroPower strategy + registry. */
+/** Hero-power strategy registry. */
 public interface HeroPower {
   void validate(Player player);
   void execute(Game game, Player player);

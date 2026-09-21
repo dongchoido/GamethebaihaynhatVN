@@ -16,7 +16,7 @@
   <version>0.0.1</version>
   <packaging>jar</packaging>
   <name>CoinCard Server (Java)</name>
-  <description>CoinCard game server - Spring Boot + WebSocket + SQLite. Same protocol as the Node server.</description>
+  <description>CoinCard game server - Spring Boot + WebSocket + SQLite.</description>
 
   <properties>
     <java.version>17</java.version>

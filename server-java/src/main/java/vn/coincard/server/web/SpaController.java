@@ -8,10 +8,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 
-/** Serves the React build (same single-port behavior as the Node server). */
+/** Serves the React production build. */
 @Controller
 public class SpaController {
-  @Value("${coincard.client-dist:../client/dist}")
+  @Value("${coincard.client-dist}")
   private String clientDist;
 
   @GetMapping("/")

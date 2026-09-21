@@ -3,7 +3,7 @@ package vn.coincard.server.game;
 import java.util.List;
 import java.util.stream.Collectors;
 
-/** Mirror of CombatService.ts */
+/** Validates and resolves minion combat. */
 public final class CombatService {
   private CombatService() {}
 
@@ -12,7 +12,7 @@ public final class CombatService {
     if (attacker == null) {
       throw new GameException.InvalidTarget("Attacker không tồn tại hoặc không phải quái của bạn.");
     }
-    if (!attacker.ownerId.equals(player.id())) {
+    if (!attacker.getOwnerId().equals(player.id())) {
       throw new GameException.InvalidTarget("Không được dùng quái của đối thủ.");
     }
     if (!attacker.canAttack()) {
@@ -20,14 +20,11 @@ public final class CombatService {
     }
 
     List<Minion> taunts = opponent.getBoard().stream()
-        .filter(m -> m.hasTaunt && !m.isDead()).collect(Collectors.toList());
+        .filter(m -> m.hasTaunt() && !m.isDead()).collect(Collectors.toList());
 
     if (targetId.equals(opponent.id())) {
       if (!opponent.getBoard().isEmpty()) {
         throw new GameException.MinionsBlockHero();
-      }
-      if (!taunts.isEmpty()) {
-        throw new GameException.TauntRequired();
       }
       player.recordDamage(opponent.heroState().takeDamage(attacker.currentAttack()));
       attacker.markAsAttacked();
@@ -41,7 +38,7 @@ public final class CombatService {
     if (defender == null) {
       throw new GameException.InvalidTarget("Chỉ được tấn công quái của đối thủ.");
     }
-    if (!taunts.isEmpty() && !defender.hasTaunt) {
+    if (!taunts.isEmpty() && !defender.hasTaunt()) {
       throw new GameException.TauntRequired();
     }
     opponent.recordDamage(attacker.takeDamage(defender.currentAttack()));

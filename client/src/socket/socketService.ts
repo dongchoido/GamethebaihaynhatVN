@@ -3,12 +3,10 @@ import {
   type AttackPayload,
   type JoinRoomPayload,
   type PlayCardPayload,
-  type ReconnectPayload,
 } from '@coincard/shared';
 import { CompatSocket } from './compatSocket';
 
-// Wrapper mỏng quanh CompatSocket (WebSocket thuần tới server Java) —
-// component không gọi transport trực tiếp. Giữ nguyên API cũ của socket.io.
+// Wrapper mỏng quanh CompatSocket để component không gọi transport trực tiếp.
 class SocketService {
   private socket: CompatSocket | null = null;
 
@@ -92,10 +90,6 @@ class SocketService {
 
   rematch(gameId: string): void {
     this.getSocket().emit(ClientEvents.REMATCH, { gameId });
-  }
-
-  reconnectGame(payload: ReconnectPayload): void {
-    this.getSocket().emit(ClientEvents.RECONNECT_GAME, payload);
   }
 
   disconnect(): void {

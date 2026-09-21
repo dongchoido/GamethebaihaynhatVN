@@ -2,7 +2,7 @@ package vn.coincard.server.game;
 
 import java.util.List;
 
-/** Mirror of server/src/game/tokenCards.ts */
+/** Non-collectible cards created by effects and hero powers. */
 public final class TokenCards {
   private TokenCards() {}
 

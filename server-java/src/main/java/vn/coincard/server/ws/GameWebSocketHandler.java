@@ -17,8 +17,6 @@ import vn.coincard.server.room.RoomPlayer;
 
 /**
  * Plain WebSocket transport. Envelope: {"event": "...", "data": {...}}.
- * Same event names and payload shapes as the Socket.IO server, so the
- * React client only swaps its transport adapter.
  */
 @Component
 public class GameWebSocketHandler extends TextWebSocketHandler implements MessageSender {

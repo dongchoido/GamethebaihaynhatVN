@@ -4,9 +4,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
-import java.util.UUID;
 
-/** Mirror of server/src/game/Deck.ts (Fisher-Yates shuffle, server-side randomness). */
+/** Server-side shuffled card deck. */
 public class Deck {
   private List<CardTypes.CardDefinition> cards;
   private final Random random = new Random();
@@ -17,17 +16,9 @@ public class Deck {
   }
 
   public int size() { return cards.size(); }
-  public boolean isEmpty() { return cards.isEmpty(); }
-
   public CardTypes.CardDefinition drawOne() {
     if (cards.isEmpty()) throw new IllegalStateException("Deck is empty.");
     return cards.remove(0);
-  }
-
-  public List<CardTypes.CardDefinition> drawMultiple(int count) {
-    List<CardTypes.CardDefinition> out = new ArrayList<>();
-    for (int i = 0; i < count && !cards.isEmpty(); i++) out.add(cards.remove(0));
-    return out;
   }
 
   public void returnToBottom(CardTypes.CardDefinition card) {
@@ -56,9 +47,5 @@ public class Deck {
       int j = random.nextInt(i + 1);
       Collections.swap(cards, i, j);
     }
-  }
-
-  public static String makeUniqueCardId() {
-    return UUID.randomUUID().toString();
   }
 }

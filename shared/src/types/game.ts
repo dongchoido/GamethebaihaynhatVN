@@ -2,7 +2,6 @@ import type { CardDefinition } from './cards.js';
 
 export enum GameStatus {
   WAITING = 'WAITING',
-  MULLIGAN = 'MULLIGAN',
   PLAYING = 'PLAYING',
   FINISHED = 'FINISHED',
 }

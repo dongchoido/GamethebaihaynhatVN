@@ -2,12 +2,11 @@ package vn.coincard.server.game.effects;
 
 import java.util.List;
 import java.util.UUID;
-import vn.coincard.server.game.Deck;
 import vn.coincard.server.game.Minion;
 import vn.coincard.server.game.Player;
 import vn.coincard.server.game.TokenCards;
 
-/** Mirror of AoeEffects.ts */
+/** Area, destroy and transform effect strategies. */
 public final class AreaEffects {
   private AreaEffects() {}
 
@@ -28,7 +27,7 @@ public final class AreaEffects {
           ? context.areaTargets : context.opponent.getBoard();
       for (Minion m : targets) {
         int actual = m.takeDamage(amount);
-        if (m.ownerId.equals(context.opponent.id())) context.player.recordDamage(actual);
+        if (m.getOwnerId().equals(context.opponent.id())) context.player.recordDamage(actual);
       }
     }
   }
@@ -55,8 +54,8 @@ public final class AreaEffects {
     @Override
     public void execute(EffectContext context) {
       if (!(context.target instanceof Minion target)) return;
-      Player owner = target.ownerId.equals(context.player.id()) ? context.player : context.opponent;
-      owner.replaceMinion(target.instanceId, new Minion(
+      Player owner = target.getOwnerId().equals(context.player.id()) ? context.player : context.opponent;
+      owner.replaceMinion(target.getInstanceId(), new Minion(
           UUID.randomUUID().toString(),
           TokenCards.SHEEP_TOKEN.id(), TokenCards.SHEEP_TOKEN.name(),
           TokenCards.SHEEP_TOKEN.attack(), TokenCards.SHEEP_TOKEN.health(),

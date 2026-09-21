@@ -12,17 +12,14 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
-/**
- * Creates tables (if missing) and seeds the 34 cards + 5 heroes
- * from data/cards.json — mirror of server/src/database/seed.ts.
- */
+/** Creates the schema and synchronizes the card/hero catalog from data/cards.json. */
 @Component
 public class DatabaseSeeder implements CommandLineRunner {
   private final JdbcTemplate jdbc;
   private final JdbcRepositories repos;
   private final ObjectMapper mapper = new ObjectMapper();
 
-  @Value("${coincard.cards-path:../data/cards.json}")
+  @Value("${coincard.cards-path}")
   private String cardsPath;
 
   public DatabaseSeeder(JdbcTemplate jdbc, JdbcRepositories repos) {
@@ -33,7 +30,7 @@ public class DatabaseSeeder implements CommandLineRunner {
   @Override
   public void run(String... args) throws Exception {
     JdbcRepositories.initSchema(jdbc);
-    if (repos.countCards(jdbc) > 0 && repos.countHeroes(jdbc) > 0) return;
+    boolean firstSeed = repos.countCards(jdbc) == 0 || repos.countHeroes(jdbc) == 0;
     List<Map<String, Object>> cards = mapper.readValue(
         Files.readString(Path.of(cardsPath)), new TypeReference<List<Map<String, Object>>>() {});
     String now = Instant.now().toString();
@@ -50,6 +47,8 @@ public class DatabaseSeeder implements CommandLineRunner {
     for (String[] h : heroes) {
       repos.upsertHero(jdbc, h[0], h[1], h[2], h[3], Integer.parseInt(h[4]), h[5]);
     }
-    System.out.println("Seeded " + cards.size() + " cards and " + heroes.length + " heroes.");
+    if (firstSeed) {
+      System.out.println("Seeded " + cards.size() + " cards and " + heroes.length + " heroes.");
+    }
   }
 }

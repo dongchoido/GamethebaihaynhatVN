@@ -2,13 +2,12 @@ import { createContext, useCallback, useContext, useMemo, useState, type ReactNo
 import type { GameState } from '@coincard/shared';
 import { socketService } from '../socket/socketService';
 
-export type ScreenPhase = 'home' | 'lobby' | 'game' | 'over';
+type ScreenPhase = 'home' | 'lobby' | 'game' | 'over';
 
 interface SessionInfo {
   roomCode: string;
   playerId: string;
   sessionToken: string;
-  playerName: string;
 }
 
 interface GameStoreValue {

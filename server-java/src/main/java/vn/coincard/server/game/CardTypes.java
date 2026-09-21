@@ -43,14 +43,6 @@ public final class CardTypes {
       List<String> keywords,
       boolean collectible) {}
 
-  public record HeroDefinition(
-      String id,
-      String name,
-      String heroClass,
-      String powerName,
-      int powerCost,
-      String imagePath) {}
-
   @SuppressWarnings("unchecked")
   public static EffectDefinition effectFromMap(Map<String, Object> m) {
     return new EffectDefinition(
@@ -85,32 +77,6 @@ public final class CardTypes {
   }
 
   public static Map<String, Object> cardToState(CardDefinition c) {
-    java.util.LinkedHashMap<String, Object> m = new java.util.LinkedHashMap<>();
-    m.put("id", c.id());
-    m.put("name", c.name());
-    m.put("slug", c.slug());
-    m.put("description", c.description());
-    m.put("type", c.type());
-    m.put("rarity", c.rarity());
-    m.put("manaCost", c.manaCost());
-    m.put("attack", c.attack());
-    m.put("health", c.health());
-    m.put("heroClass", c.heroClass());
-    m.put("imagePath", c.imagePath());
-    m.put("effects", c.effects().stream().map(CardTypes::effectToState).toList());
-    m.put("keywords", c.keywords());
-    m.put("collectible", c.collectible());
-    return m;
-  }
-
-  private static Map<String, Object> effectToState(EffectDefinition e) {
-    java.util.LinkedHashMap<String, Object> m = new java.util.LinkedHashMap<>();
-    m.put("type", e.type());
-    m.put("value", e.value());
-    m.put("target", e.target());
-    if (e.count() != null) m.put("count", e.count());
-    if (e.minAttack() != null) m.put("minAttack", e.minAttack());
-    if (e.cardSlug() != null) m.put("cardSlug", e.cardSlug());
-    return m;
+    return vn.coincard.server.mapper.GameStateMapper.toCardState(c);
   }
 }

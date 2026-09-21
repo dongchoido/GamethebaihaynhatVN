@@ -3,35 +3,28 @@
   "private": true,
   "workspaces": [
     "client",
-    "server",
     "shared"
   ],
   "scripts": {
-    "dev": "npm run build:shared && concurrently \"npm run dev --workspace server\" \"npm run dev --workspace client\"",
+    "dev": "npm run build:shared && concurrently \"npm run dev:java\" \"npm run dev --workspace client\"",
     "build:shared": "npm run build --workspace shared",
-    "build:server": "npm run build --workspace server",
-    "build:client": "npm run build --workspace client",
-    "build": "npm run build:shared && npm run typecheck --workspace client && npm run build:server && npm run build:client",
-    "verify": "npm run build && npm test && npm run test:integration",
-    "test:integration": "node scripts/integration.mjs",
-    "start": "npm run start --workspace server",
+    "build:client": "npm run build:shared && npm run build --workspace client",
+    "build:java": "node scripts/maven.mjs package -DskipTests",
+    "build": "npm run build:client && npm run build:java",
+    "verify": "npm run build:shared && npm run typecheck --workspace client && npm run test:java && npm run build && node scripts/verify-e2e.mjs",
+    "start": "java -jar server-java/target/coincard-server-0.0.1.jar",
     "tunnel": "node scripts/tunnel.mjs",
-    "build:java": ".\\.tools\\apache-maven-3.9.9\\bin\\mvn.cmd -f server-java/pom.xml package -DskipTests",
-    "test:java": ".\\.tools\\apache-maven-3.9.9\\bin\\mvn.cmd -f server-java/pom.xml test",
-    "dev:java": ".\\.tools\\apache-maven-3.9.9\\bin\\mvn.cmd -f server-java/pom.xml spring-boot:run",
-    "start:java": "java -jar server-java/target/coincard-server-0.0.1.jar",
-    "dev:server": "npm run dev --workspace server",
-    "dev:client": "npm run dev --workspace client",
-    "dev:lan": "npm run build:shared && concurrently \"npm run dev --workspace server\" \"npm run dev --workspace client\"",
-    "prisma:generate": "npm run prisma:generate --workspace server",
-    "prisma:migrate": "npm run prisma:migrate --workspace server",
-    "prisma:push": "npm run prisma:push --workspace server",
-    "seed": "npm run seed --workspace server",
-    "test": "npm run test --workspace server",
+    "test": "npm run test:java",
+    "test:java": "node scripts/maven.mjs test",
+    "dev:java": "node scripts/maven.mjs spring-boot:run",
+    "dev:client": "npm run build:shared && npm run dev --workspace client",
     "test:e2e": "node e2e-two-players.cjs",
-    "test:e2e-neg": "node e2e-negative.cjs"
+    "test:e2e-neg": "node e2e-negative.cjs",
+    "test:e2e-connection": "node e2e-connection.cjs",
+    "test:e2e-tabs": "node e2e-tabs.cjs"
   },
   "devDependencies": {
-    "concurrently": "^9.1.2"
+    "concurrently": "^9.1.2",
+    "ws": "^8.18.3"
   }
 }
