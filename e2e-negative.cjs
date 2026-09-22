@@ -21,6 +21,18 @@ function once(socket, event, timeoutMs = 8000) {
 }
 
 async function main() {
+  // 0. Protocol mới phân biệt event cũ với payload sai định dạng.
+  const protocol = connect(URL);
+  await once(protocol, 'connect');
+  const unknownEventP = once(protocol, 'ACTION_REJECTED');
+  protocol.emit('DRAW_CARD', {});
+  const unknownEvent = await unknownEventP;
+  check('event cũ → INVALID_COMMAND reject', unknownEvent.code === 'INVALID_COMMAND');
+  const malformedP = once(protocol, 'ACTION_REJECTED');
+  protocol.emit('CREATE_ROOM', { playerName: '' });
+  const malformed = await malformedP;
+  check('payload hỏng → INVALID_PAYLOAD reject', malformed.code === 'INVALID_PAYLOAD');
+
   // 1. Join mã phòng không tồn tại → REJECT, server sống
   const bad = connect(URL);
   await once(bad, 'connect');
@@ -45,13 +57,23 @@ async function main() {
   const full = await fullP;
   check('người thứ 3 → ROOM_FULL reject', full.code === 'ROOM_FULL');
 
-  // 3. Action với gameId vớ vẩn → reject, server sống
+  // 3. Loadout không hợp lệ → server reject trước khi room start.
+  const deckRejectP = once(p1, 'ACTION_REJECTED');
+  p1.emit('SUBMIT_LOADOUT', {
+    roomCode: created.roomCode,
+    heroClass: 'MAGE',
+    cardSlugs: ['not-a-30-card-deck'],
+  });
+  const deckReject = await deckRejectP;
+  check('deck sai → INVALID_DECK reject', deckReject.code === 'INVALID_DECK');
+
+  // 4. Action với gameId vớ vẩn → reject, server sống
   const badGameP = once(p1, 'ACTION_REJECTED');
   p1.emit('PLAY_CARD', { gameId: 'nope', cardInstanceId: 'x' });
   await badGameP;
   check('gameId sai → reject không crash', true);
 
-  // 4. Server còn sống: tạo phòng mới được
+  // 5. Server còn sống: tạo phòng mới được
   const p4 = connect(URL);
   await once(p4, 'connect');
   const okP = once(p4, 'ROOM_CREATED');
@@ -59,7 +81,7 @@ async function main() {
   const okRoom = await okP;
   check('server còn sống sau loạt lỗi', !!okRoom.roomCode);
 
-  for (const s of [bad, p1, p2, p3, p4]) s.disconnect();
+  for (const s of [protocol, bad, p1, p2, p3, p4]) s.disconnect();
   console.log(`\nNEGATIVE: ${pass}/${pass + fail} pass`);
   process.exitCode = fail ? 1 : 0;
 }

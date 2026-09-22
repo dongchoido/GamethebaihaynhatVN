@@ -37,7 +37,6 @@ public class Minion extends GameCharacter {
   public String getName() { return name; }
   public String getOwnerId() { return ownerId; }
   public String getImagePath() { return imagePath; }
-  public boolean isHasTaunt() { return hasTaunt; }
   public boolean hasTaunt() { return hasTaunt; }
 
   public int currentAttack() { return attack; }
@@ -49,14 +48,9 @@ public class Minion extends GameCharacter {
 
   @Override
   public int takeDamage(int amount) {
-    int before = getCurrentHealth();
+    int before = currentHealth();
     super.takeDamage(amount);
-    return before - getCurrentHealth();
-  }
-
-  @Override
-  public String getCharacterType() {
-    return "MINION";
+    return before - currentHealth();
   }
 
   public void modifyAttack(int delta) {
@@ -64,24 +58,26 @@ public class Minion extends GameCharacter {
   }
 
   public void modifyHealth(int delta) {
-    int newHealth = getCurrentHealth() + delta;
-    int newMax = getMaxHealth() + Math.max(0, delta);
+    int newHealth = currentHealth() + delta;
+    int newMax = maxHealth() + Math.max(0, delta);
     setMaxHealth(newMax);
     setCurrentHealth(newHealth);
   }
 
   public void markAsAttacked() { canAttackValue = false; }
 
-  /** Opaque undo — Memento (health + attack + canAttack). */
-  @Override
-  public Runnable checkpoint() {
-    Runnable base = checkpointHealth();
-    int a = attack;
-    boolean c = canAttackValue;
-    return () -> {
-      base.run();
-      attack = a;
-      canAttackValue = c;
-    };
+  /** The instance reference preserves board identity when a failed transform is restored. */
+  record State(Minion instance, int attack, int currentHealth, int maxHealth, boolean canAttack) {}
+
+  State snapshotState() {
+    return new State(this, attack, currentHealth(), maxHealth(), canAttackValue);
+  }
+
+  void restoreState(State state) {
+    if (state.instance() != this) throw new IllegalArgumentException("Sai minion snapshot.");
+    attack = state.attack();
+    setMaxHealth(state.maxHealth());
+    setCurrentHealth(state.currentHealth());
+    canAttackValue = state.canAttack();
   }
 }

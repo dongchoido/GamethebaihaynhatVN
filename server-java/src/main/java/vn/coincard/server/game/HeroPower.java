@@ -1,29 +1,31 @@
 package vn.coincard.server.game;
 
-import java.util.Map;
+import java.util.List;
 import java.util.UUID;
 
 /** Hero-power strategy registry. */
 public interface HeroPower {
+  HeroClass supportedClass();
   void validate(Player player);
   void execute(Game game, Player player);
 
-  static HeroPower forClass(String heroClass) {
-    HeroPower power = POWERS.get(heroClass);
-    if (power == null) throw new GameException.InvalidTarget("Hero chưa được hỗ trợ.");
-    return power;
+  static List<HeroPower> defaults() {
+    return List.of(
+        new DamagePower(HeroClass.MAGE, 1),
+        new DamagePower(HeroClass.HUNTER, 2),
+        new RecruitPower(),
+        new HealPower(),
+        new DrawPower());
   }
 
-  Map<String, HeroPower> POWERS = Map.of(
-      "MAGE", new DamagePower(1),
-      "HUNTER", new DamagePower(2),
-      "PALADIN", new RecruitPower(),
-      "PRIEST", new HealPower(),
-      "WARLOCK", new DrawPower());
-
   class DamagePower implements HeroPower {
+    private final HeroClass heroClass;
     private final int amount;
-    DamagePower(int amount) { this.amount = amount; }
+    DamagePower(HeroClass heroClass, int amount) {
+      this.heroClass = heroClass;
+      this.amount = amount;
+    }
+    @Override public HeroClass supportedClass() { return heroClass; }
     @Override public void validate(Player player) {}
     @Override public void execute(Game game, Player player) {
       player.recordDamage(game.getOpponent().heroState().takeDamage(amount));
@@ -31,6 +33,7 @@ public interface HeroPower {
   }
 
   class RecruitPower implements HeroPower {
+    @Override public HeroClass supportedClass() { return HeroClass.PALADIN; }
     @Override public void validate(Player player) {
       if (player.boardCount() >= Constants.MAX_BOARD_SIZE) throw new GameException.BoardFull();
     }
@@ -43,15 +46,17 @@ public interface HeroPower {
   }
 
   class HealPower implements HeroPower {
+    @Override public HeroClass supportedClass() { return HeroClass.PRIEST; }
     @Override public void validate(Player player) {}
     @Override public void execute(Game game, Player player) { player.heroState().heal(2); }
   }
 
   class DrawPower implements HeroPower {
+    @Override public HeroClass supportedClass() { return HeroClass.WARLOCK; }
     @Override public void validate(Player player) {}
     @Override public void execute(Game game, Player player) {
       player.heroState().takeDamage(2);
-      if (player.deckSize() > 0) player.addToHand(player.drawCard());
+      player.drawForTurn();
     }
   }
 }

@@ -1,31 +1,39 @@
 package vn.coincard.server.game;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /** Core game-rule tests. */
 class GameEngineTest {
-  private GameEngine engine;
+  private GameTestHarness engine;
 
-  static CardTypes.CardDefinition minionCard(String id, int cost, int atk, int hp, String... keywords) {
-    return new CardTypes.CardDefinition(id, "Test Minion", "test-minion", "Test.", "MINION",
-        "COMMON", cost, atk, hp, "NEUTRAL", "assets/images/Minions/Chilwind Yeti.png",
+  static CardTypes.CardDefinition minionCard(String id, int cost, int atk, int hp,
+      Keyword... keywords) {
+    return new CardTypes.CardDefinition(id, "Test Minion", "test-minion", "Test.",
+        CardType.MINION, Rarity.COMMON, cost, atk, hp, HeroClass.NEUTRAL,
+        "assets/images/Minions/Chilwind Yeti.png",
         List.of(), List.of(keywords), true);
   }
 
   static CardTypes.CardDefinition spellCard(String id, int cost, CardTypes.EffectDefinition... effects) {
-    return new CardTypes.CardDefinition(id, "Target Spell", "target-spell", "Test.", "SPELL",
-        "COMMON", cost, 0, 0, "NEUTRAL", "assets/images/Minions/Chilwind Yeti.png",
+    return new CardTypes.CardDefinition(id, "Target Spell", "target-spell", "Test.",
+        CardType.SPELL, Rarity.COMMON, cost, 0, 0, HeroClass.NEUTRAL,
+        "assets/images/Minions/Chilwind Yeti.png",
         List.of(effects), List.of(), true);
   }
 
   static Hero mage() {
-    return new Hero("hero_mage", "Jaina", "MAGE", "Fireblast", 2,
+    return new Hero("hero_mage", "Jaina", HeroClass.MAGE, "Fireblast", 2,
         "assets/images/Heros/Jaina Proudmoore.png");
   }
 
@@ -36,19 +44,34 @@ class GameEngineTest {
   }
 
   Game setup() {
-    engine = new GameEngine();
+    engine = new GameTestHarness();
     Game game = engine.createGame("game-1", "ABC123",
-        new GameEngine.PlayerInit("p1", "One", mage(), deckOf(30)),
-        new GameEngine.PlayerInit("p2", "Two", mage(), deckOf(30)));
-    game.start();
+        new GameFactory.PlayerInit("p1", "One", mage(), deckOf(30)),
+        new GameFactory.PlayerInit("p2", "Two", mage(), deckOf(30)));
+    GameTestAccess.start(game, "p1");
     return game;
   }
 
   @Test
   void openingHands() {
     Game game = setup();
-    assertEquals(3, game.getPlayerById("p1").handCount());
+    assertEquals(4, game.getPlayerById("p1").handCount());
+    assertEquals(5, game.getPlayerById("p2").handCount());
+  }
+
+  @Test
+  void productionOpeningIncludesFirstTurnDrawAndCoin() {
+    engine = new GameTestHarness();
+    Game game = engine.createGame("game-production", "ABC124",
+        new GameFactory.PlayerInit("p1", "One", mage(), deckOf(30)),
+        new GameFactory.PlayerInit("p2", "Two", mage(), deckOf(30)));
+    engine.start("game-production", "p2");
+    assertEquals("p2", game.getActivePlayerId());
+    assertEquals("", game.getStatusMessage());
+    assertEquals(5, game.getPlayerById("p1").handCount());
     assertEquals(4, game.getPlayerById("p2").handCount());
+    assertTrue(game.getPlayerById("p1").handCards().stream()
+        .anyMatch(card -> "the-coin".equals(card.slug())));
   }
 
   @Test
@@ -151,7 +174,8 @@ class GameEngineTest {
     Game game = setup();
     Player p1 = game.getPlayerById("p1");
     CardTypes.CardDefinition spell = spellCard("s1", 0,
-        new CardTypes.EffectDefinition("DAMAGE", 2, "ANY_MINION", null, null, null));
+        new CardTypes.EffectDefinition(
+            EffectType.DAMAGE, 2, EffectTarget.ANY_MINION, null, null, null));
     p1.addToHand(spell);
     int manaBefore = p1.currentMana(), handBefore = p1.handCount();
     assertThrows(GameException.class, () -> engine.playCard("game-1", "p1", "s1", null));
@@ -168,7 +192,8 @@ class GameEngineTest {
     p1.summonMinion(new Minion("own-1", "c", "Own", 2, 5, "p1", false, "img"));
     p2.summonMinion(new Minion("foe-1", "c", "Foe", 2, 5, "p2", false, "img"));
     CardTypes.CardDefinition curse = spellCard("curse", 0,
-        new CardTypes.EffectDefinition("DAMAGE", 2, "ENEMY_MINION", null, null, null));
+        new CardTypes.EffectDefinition(
+            EffectType.DAMAGE, 2, EffectTarget.ENEMY_MINION, null, null, null));
     p1.addToHand(curse);
     int handBefore = p1.handCount();
     assertThrows(GameException.class, () -> engine.playCard("game-1", "p1", "curse", "own-1"));
@@ -179,6 +204,28 @@ class GameEngineTest {
   }
 
   @Test
+  void characterSpellsUsePlayerIdsForHeroTargets() {
+    Game game = setup();
+    Player p1 = game.getPlayerById("p1");
+    Player p2 = game.getPlayerById("p2");
+    CardTypes.CardDefinition damage = spellCard("hero-damage", 0,
+        new CardTypes.EffectDefinition(
+            EffectType.DAMAGE, 4, EffectTarget.ENEMY_CHARACTER, null, null, null));
+    CardTypes.CardDefinition heal = spellCard("hero-heal", 0,
+        new CardTypes.EffectDefinition(
+            EffectType.HEAL, 3, EffectTarget.FRIENDLY_HERO, null, null, null));
+    p1.heroState().takeDamage(8);
+    p1.addToHand(damage);
+    p1.addToHand(heal);
+
+    engine.playCard("game-1", "p1", "hero-damage", p2.id());
+    engine.playCard("game-1", "p1", "hero-heal", p1.id());
+
+    assertEquals(26, p2.heroState().currentHealth());
+    assertEquals(25, p1.heroState().currentHealth());
+  }
+
+  @Test
   void siphonSoulCastsAndHeals() {
     Game game = setup();
     Player p1 = game.getPlayerById("p1");
@@ -186,8 +233,10 @@ class GameEngineTest {
     p2.summonMinion(new Minion("big-1", "c", "Big", 6, 6, "p2", false, "img"));
     p1.heroState().takeDamage(10);
     CardTypes.CardDefinition siphon = spellCard("siphon", 0,
-        new CardTypes.EffectDefinition("DESTROY", 0, "ANY_MINION", null, null, null),
-        new CardTypes.EffectDefinition("HEAL", 3, "FRIENDLY_HERO", null, null, null));
+        new CardTypes.EffectDefinition(
+            EffectType.DESTROY, 0, EffectTarget.ANY_MINION, null, null, null),
+        new CardTypes.EffectDefinition(
+            EffectType.HEAL, 3, EffectTarget.FRIENDLY_HERO, null, null, null));
     p1.addToHand(siphon);
     engine.playCard("game-1", "p1", "siphon", "big-1");
     assertEquals(0, p2.boardCount());
@@ -212,16 +261,18 @@ class GameEngineTest {
     p1.summonMinion(attacker2);
     p2.summonMinion(new Minion("taunt-1", "c", "Taunt", 2, 4, "p2", false, "img", true));
     p2.summonMinion(new Minion("plain-1", "c", "Plain", 2, 4, "p2", false, "img"));
-    assertThrows(GameException.MinionsBlockHero.class,
-        () -> engine.attack("game-1", "p1", "atk-2", "p2"));
     assertThrows(GameException.TauntRequired.class,
-        () -> engine.attack("game-1", "p1", "atk-2", "plain-1"));
-    engine.attack("game-1", "p1", "atk-2", "taunt-1");
+        () -> engine.attack("game-1", "p1", "atk-2", "p2"));
+    Minion attacker3 = new Minion("atk-3", "c", "Atk", 3, 5, "p1", true, "img");
+    p1.summonMinion(attacker3);
+    assertThrows(GameException.TauntRequired.class,
+        () -> engine.attack("game-1", "p1", "atk-3", "plain-1"));
+    engine.attack("game-1", "p1", "atk-3", "taunt-1");
     assertEquals(1, p2.findMinion("taunt-1").currentHealth());
   }
 
   @Test
-  void mustClearMinionsBeforeHero() {
+  void nonTauntMinionsDoNotNeedClearingBeforeHero() {
     Game game = setup();
     Player p1 = game.getPlayerById("p1");
     Player p2 = game.getPlayerById("p2");
@@ -230,24 +281,23 @@ class GameEngineTest {
     p1.summonMinion(a);
     p1.summonMinion(b);
     p2.summonMinion(new Minion("f4", "c", "F", 2, 2, "p2", false, "img"));
-    GameException ex = assertThrows(GameException.class,
-        () -> engine.attack("game-1", "p1", "a3", "p2"));
-    assertEquals("MINIONS_BLOCK_HERO", ex.code());
-    assertTrue(a.canAttack());
-    engine.attack("game-1", "p1", "a3", "f4");
+    assertDoesNotThrow(() -> engine.attack("game-1", "p1", "a3", "p2"));
+    assertEquals(27, p2.heroState().currentHealth());
+    assertFalse(a.canAttack());
+    engine.attack("game-1", "p1", "b3", "f4");
     assertEquals(0, p2.boardCount());
-    engine.attack("game-1", "p1", "b3", "p2");
     assertEquals(27, p2.heroState().currentHealth());
   }
 
   @Test
-  void handLimitAndManualDraw() {
+  void handLimitBurnsDrawnCard() {
     Game game = setup();
     Player p1 = game.getPlayerById("p1");
     for (CardTypes.CardDefinition c : new ArrayList<>(p1.handCards())) p1.removeFromHand(c.id());
-    for (int i = 0; i < 8; i++) p1.addToHand(minionCard("h" + i, 0, 1, 1));
-    assertEquals(6, p1.handCount());
-    assertThrows(GameException.HandFull.class, () -> engine.drawCard("game-1", "p1"));
+    for (int i = 0; i < 12; i++) p1.addToHand(minionCard("h" + i, 0, 1, 1));
+    assertEquals(10, p1.handCount());
+    assertFalse(p1.addToHand(minionCard("burned", 0, 1, 1)));
+    assertEquals(10, p1.handCount());
   }
 
   @Test
@@ -258,8 +308,10 @@ class GameEngineTest {
     p1.heroState().takeDamage(29);
     p2.heroState().takeDamage(29);
     CardTypes.CardDefinition boom = spellCard("boom", 0,
-        new CardTypes.EffectDefinition("DAMAGE", 30, "ENEMY_HERO", null, null, null),
-        new CardTypes.EffectDefinition("DAMAGE", 30, "FRIENDLY_HERO", null, null, null));
+        new CardTypes.EffectDefinition(
+            EffectType.DAMAGE, 30, EffectTarget.ENEMY_HERO, null, null, null),
+        new CardTypes.EffectDefinition(
+            EffectType.DAMAGE, 30, EffectTarget.FRIENDLY_HERO, null, null, null));
     p1.addToHand(boom);
     engine.playCard("game-1", "p1", "boom", null);
     assertTrue(game.isFinished());
@@ -271,7 +323,7 @@ class GameEngineTest {
     Game game = setup();
     Player p1 = game.getPlayerById("p1");
     Player p2 = game.getPlayerById("p2");
-    CardTypes.CardDefinition charger = minionCard("chg", 0, 3, 3, "CHARGE");
+    CardTypes.CardDefinition charger = minionCard("chg", 0, 3, 3, Keyword.CHARGE);
     p1.addToHand(charger);
     engine.playCard("game-1", "p1", "chg", null);
     assertEquals(1, p1.cardsPlayed());
@@ -279,5 +331,23 @@ class GameEngineTest {
     engine.attack("game-1", "p1", m.getInstanceId(), "p2");
     assertEquals(3, p1.damageDealt());
     assertEquals(27, p2.heroState().currentHealth());
+  }
+
+  @Test
+  void heroPowerCanOnlyBeUsedOncePerTurn() {
+    Game game = setup();
+    Player p1 = game.getPlayerById("p1");
+    p1.increaseMaxMana();
+    p1.refillMana();
+    engine.useHeroPower("game-1", "p1");
+    p1.gainTemporaryMana(2);
+    assertThrows(GameException.HeroPowerAlreadyUsed.class,
+        () -> engine.useHeroPower("game-1", "p1"));
+  }
+
+  @Test
+  void commandRecordsRejectBlankIdentifiers() {
+    assertThrows(GameException.InvalidCommand.class,
+        () -> new GameCommand.Attack("game-1", "p1", "attacker", " "));
   }
 }

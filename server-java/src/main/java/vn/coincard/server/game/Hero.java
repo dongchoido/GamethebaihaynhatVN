@@ -4,12 +4,12 @@ import vn.coincard.server.model.GameCharacter;
 
 /** Mutable hero — Inheritance: Hero là một GameCharacter. */
 public class Hero extends GameCharacter {
-  public Hero(String heroId, String name, String heroClass,
+  public Hero(String heroId, String name, HeroClass heroClass,
       String powerName, int powerCost, String imagePath) {
     this(heroId, name, heroClass, powerName, powerCost, imagePath, Constants.MAX_HERO_HEALTH);
   }
 
-  public Hero(String heroId, String name, String heroClass,
+  public Hero(String heroId, String name, HeroClass heroClass,
       String powerName, int powerCost, String imagePath, int health) {
     super(Constants.MAX_HERO_HEALTH);
     this.heroId = heroId;
@@ -23,38 +23,33 @@ public class Hero extends GameCharacter {
 
   private final String heroId;
   private final String name;
-  private final String heroClass;
+  private final HeroClass heroClass;
   private final String powerName;
   private final int powerCost;
   private final String imagePath;
 
   public String getHeroId() { return heroId; }
   public String getName() { return name; }
-  public String getHeroClass() { return heroClass; }
+  public HeroClass getHeroClass() { return heroClass; }
   public String getPowerName() { return powerName; }
   public int getPowerCost() { return powerCost; }
   public String getImagePath() { return imagePath; }
 
   @Override
-  public int maxHealth() {
-    return Constants.MAX_HERO_HEALTH;
-  }
-
-  @Override
-  public String getCharacterType() {
-    return "HERO";
-  }
-
-  @Override
   public int takeDamage(int amount) {
-    int before = getCurrentHealth();
+    int before = currentHealth();
     super.takeDamage(amount);
-    return before - getCurrentHealth();
+    return before - currentHealth();
   }
 
-  /** Opaque undo — Memento. */
-  @Override
-  public Runnable checkpoint() {
-    return checkpointHealth();
+  record State(int currentHealth, int maxHealth) {}
+
+  State snapshotState() {
+    return new State(currentHealth(), maxHealth());
+  }
+
+  void restoreState(State state) {
+    setMaxHealth(state.maxHealth());
+    setCurrentHealth(state.currentHealth());
   }
 }

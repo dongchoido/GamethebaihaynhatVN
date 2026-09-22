@@ -48,8 +48,8 @@ public class RoomManager {
   }
 
   public void indexPlayer(Room room, RoomPlayer player) {
-    if (player.socketId != null) sockets.put(player.socketId, room);
-    sessions.put(player.sessionToken, room);
+    if (player.socketId() != null) sockets.put(player.socketId(), room);
+    sessions.put(player.sessionToken(), room);
   }
 
   public void unindexSocket(String socketId) {
@@ -61,8 +61,8 @@ public class RoomManager {
     Room room = rooms.get(upper);
     if (room == null) return;
     for (RoomPlayer p : room.getPlayers()) {
-      if (p.socketId != null) sockets.remove(p.socketId);
-      sessions.remove(p.sessionToken);
+      if (p.socketId() != null) sockets.remove(p.socketId());
+      sessions.remove(p.sessionToken());
     }
     rooms.remove(room.getRoomCode());
   }

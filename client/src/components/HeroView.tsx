@@ -26,6 +26,7 @@ export function HeroView({ hero, powerUsable, targetable, onHeroClick, onPowerCl
         type="button"
         className={powerUsable ? 'hero-power hero-power-usable' : 'hero-power'}
         onClick={onPowerClick}
+        disabled={!powerUsable}
         title={`${hero.name} power (${hero.powerCost})`}
       >
         <img

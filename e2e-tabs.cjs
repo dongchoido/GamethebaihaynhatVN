@@ -1,5 +1,6 @@
 // Mô phỏng đúng 2 tab browser qua proxy :5173.
 const { connect } = require('./e2e-ws.cjs');
+const { deckFor } = require('./e2e-deck.cjs');
 
 const URL = 'http://localhost:5173';
 let pass = 0;
@@ -52,8 +53,9 @@ async function main() {
 
   const startedP = once(tab1, 'GAME_STARTED');
   const stateP = once(tab1, 'GAME_STATE_UPDATED');
-  tab1.emit('SELECT_DECK', { heroId: 'MAGE', roomCode: created.roomCode });
-  tab2.emit('SELECT_DECK', { heroId: 'HUNTER', roomCode: created.roomCode });
+  const [mageDeck, hunterDeck] = await Promise.all([deckFor(URL, 'MAGE'), deckFor(URL, 'HUNTER')]);
+  tab1.emit('SUBMIT_LOADOUT', { heroClass: 'MAGE', roomCode: created.roomCode, cardSlugs: mageDeck });
+  tab2.emit('SUBMIT_LOADOUT', { heroClass: 'HUNTER', roomCode: created.roomCode, cardSlugs: hunterDeck });
   const started = await startedP;
   const gameId = started.gameId;
   let cur = (await stateP).gameState;

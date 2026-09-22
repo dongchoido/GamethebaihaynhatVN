@@ -1,37 +1,26 @@
-# CoinCard - Game thẻ bài online 2 người chơi
+# CoinCard
 
-Bài tập lớn môn OOP (nhóm D24CN09-B PTIT). Server là authoritative: client chỉ
-gửi action, còn luật, mana, damage, rút bài và kết quả do Java backend quyết định.
+CoinCard là bài tập lớn OOP hai người chơi. Java 17/Spring Boot là authoritative
+game core: client chỉ hiển thị snapshot và gửi command; Java quyết định deck,
+mana, effect, combat, turn, fatigue và kết quả.
 
 ## Công nghệ
 
-- Backend: Java 17, Spring Boot 3, WebSocket, JDBC và SQLite (`server-java/`).
-- Frontend: React 19, TypeScript và Vite (`client/`).
-- DTO/event phía trình duyệt: TypeScript (`shared/`).
-- Dữ liệu bài: `data/cards.json`; database runtime: `data/coincard.db`.
+- Backend: Java 17, Spring Boot 3.5, WebSocket, JDBC, SQLite (`server-java/`).
+- Frontend: React 19, TypeScript, Vite (`client/`).
+- Shared types: TypeScript (`shared/`).
+- Catalog nguồn: `data/cards.json`; database runtime: SQLite.
 
-Không còn backend Node, Socket.IO hoặc Prisma. TypeScript chỉ phục vụ giao diện
-trình duyệt và kiểu dữ liệu client.
+## Chạy
 
-## Yêu cầu
-
-- Java 17 trở lên.
-- Node.js 18 trở lên và npm 9 trở lên.
-- Không cần cài Maven; project có Maven Wrapper trong `server-java/`.
-
-## Chạy development
-
-Từ thư mục gốc project:
+Yêu cầu Java 17+ và Node.js 18+.
 
 ```bash
 npm install
 npm run dev
 ```
 
-Mở `http://localhost:5173`. Lệnh này chạy Spring Boot tại cổng 3000 và Vite tại
-cổng 5173; Vite proxy `/ws` tới Java backend.
-
-## Chạy production
+Mở `http://localhost:5173`. Production:
 
 ```bash
 npm install
@@ -39,120 +28,82 @@ npm run build
 npm start
 ```
 
-Mở `http://localhost:3000`. Spring Boot phục vụ cả React build, `/health` và
-WebSocket `/ws`. Schema SQLite và catalog 34 lá/5 hero được đồng bộ khi khởi động.
+Mở `http://localhost:3000`. Các biến môi trường hỗ trợ: `PORT`, `HOST`,
+`COINCARD_DB_PATH`, `COINCARD_CARDS_PATH`, `COINCARD_CLIENT_DIST`.
 
-Các đường dẫn có thể đổi bằng biến môi trường:
+## Chia sẻ demo qua Cloudflare
 
-- `PORT`, `HOST`
-- `COINCARD_DB_PATH`
-- `COINCARD_CARDS_PATH`
-- `COINCARD_CLIENT_DIST`
-
-## Chơi hai người
-
-1. Người thứ nhất nhập tên, tạo phòng và chọn hero.
-2. Người thứ hai nhập tên, mã phòng rồi chọn hero.
-3. Đủ hai người chọn hero thì trận tự bắt đầu.
-4. Click bài để chơi; spell cần mục tiêu thì click mục tiêu tiếp theo.
-5. Click minion của mình rồi click minion/hero địch để tấn công.
-6. Có thể rút thêm một lá mỗi lượt, dùng hero power, kết thúc lượt hoặc đầu hàng.
-
-Luật đầy đủ nằm tại `docs/GAME_RULES.md`.
-
-## LAN và Internet
-
-Build production trước, sau đó trên PowerShell:
-
-```powershell
-$env:HOST="0.0.0.0"
-npm start
-```
-
-Hai máy cùng mạng mở `http://<IPv4-máy-chủ>:3000`. Nếu cần link Internet tạm,
-giữ server chạy và mở terminal khác:
+Sau khi production server đã chạy, mở terminal khác:
 
 ```bash
 npm run tunnel
 ```
 
-## Kiểm thử
+Cloudflare in URL tạm thời trên terminal. URL dừng hoạt động khi tunnel process dừng.
+
+## Luồng chơi
+
+1. Hai người tạo hoặc vào phòng, chọn hero và mở `DeckBuilderScreen`.
+2. Deck phải có đúng 30 lá collectible, chỉ neutral hoặc đúng hero class, tối đa
+   2 bản thường và 1 Legendary. Java luôn validate lại payload.
+3. Người đi trước nhận 3 lá rồi tự rút ở lượt đầu; người đi sau nhận 4 lá và
+   The Coin. Không có mulligan hay rút thủ công.
+4. Tay tối đa 10 lá; rút khi đầy sẽ burn. Deck hết gây fatigue tăng dần 1, 2, 3...
+   Hero power dùng tối đa một lần mỗi lượt.
+
+Catalog dành cho deck builder: `GET /api/game-catalog`. Protocol WebSocket dùng
+`SUBMIT_LOADOUT`; các event cũ `SELECT_DECK` và `DRAW_CARD` đã bị loại bỏ.
+
+## Kiểm thử và quality gate
 
 ```bash
-npm run verify               # typecheck + 47 JUnit + build + production E2E
-npm run test                 # Java unit/regression/database tests
-npm run test:e2e             # 2 người chơi; cần Java server đang chạy
-npm run test:e2e-neg         # payload/action lỗi
-npm run test:e2e-connection  # reconnect và tiếp tục trận
-npm run test:e2e-tabs        # cần Java server + Vite dev
+npm run verify
+npm run test:java
+npm run test:e2e
+npm run test:e2e-rules
+npm run test:e2e-neg
+npm run test:e2e-connection
+npm run test:e2e-tabs
 ```
 
-## OOP — trả lời khi bảo vệ
+`verify` chạy shared build, TypeScript typecheck, frontend tests, Maven verify,
+production build và E2E trên server production. E2E chạy catalog CoinCard thật
+cho luồng người chơi và catalog fixture riêng cho các luật cần thứ tự rút xác định.
+Các E2E này là Node WebSocket clients kết nối vào Spring Boot production JAR;
+component test bao phủ UI, còn browser UI automation không nằm trong quality gate.
+Maven Wrapper binary nằm trong `server-java/`;
+Windows dùng `server-java\mvnw.cmd`, Linux/macOS dùng `server-java/mvnw`.
 
-### Encapsulation
-State `private` và chỉ đổi qua behavior: `Player.spendMana()`, `Hero.takeDamage()/heal()`, `Minion.takeDamage()/modifyAttack()`, `Deck.drawOne()`, `Game.switchTurn()`.
-Collection không expose mutable: `Player.getBoard()` → `unmodifiableList`, `handCards()` → `unmodifiableList`, `Game.getPlayers()` → `copy`.
-→ File: `server-java/src/main/java/vn/coincard/server/game/Player.java:31`, `model/GameCharacter.java:10`, `game/Deck.java:18`
+## OOP trong production
 
-### Inheritance
-`GameCharacter` (abstract) → `Hero` và `Minion` kế thừa chung `takeDamage/heal/isDead/checkpoint`.
-→ File: `server-java/src/main/java/vn/coincard/server/model/GameCharacter.java:7`, `game/Hero.java:6`, `game/Minion.java:6`
-
-### Abstraction
-`EffectStrategy` (`ICardEffect`), `HeroPower`, `GameRepository/CatalogRepository`, `MessageSender`.
-→ File: `game/effects/ICardEffect.java:3`, `game/HeroPower.java:7`, `db/Repositories.java:8`, `net/MessageSender.java:3`
-
-### Polymorphism
-`GameEngine` gọi `strategy.validate/ execute` không biết cụ thể `DamageEffect/HealEffect/DestroyEffect/TransformEffect/...`
-→ File: `game/EffectResolver.java:20`, `game/effects/*`, `game/HeroPower.java:17`
-
-### SOLID
-- SRP: `GameService` (gameplay) / `RoomService` (phòng) / `GamePersistenceService` (lưu DB) / `GameStateMapper` (serialize) → `server-java/src/main/java/vn/coincard/server/service/*`, `mapper/GameStateMapper.java:12`
-- OCP: thêm effect mới chỉ thêm class `EffectStrategy` không sửa resolver
-- LSP: `Hero`/`Minion` dùng như `GameCharacter` trong `GameCharacterTest`
-- ISP: interface nhỏ (`EffectStrategy`, `HeroPower`, `GameRepository`)
-- DIP: `GameService` phụ thuộc `GameRepository` abstraction, không phụ thuộc JDBC
-
-### Design Patterns thực sự dùng
-- Strategy: `EffectStrategy`, `HeroPower`
-- Repository: `GameRepository`/`CatalogRepository` → `Jdbc*`
-- Memento: `checkpoint()` trả `Runnable` undo trong `Player/Hero/Minion/Deck` → `GameEngine.playCard:43`
-- Command: `GameAction` functional interface trong `GameService:234`
-- Factory: `Deck` shuffle, `TokenCards` tạo token
+- Encapsulation: `Game`/`Player` kiểm soát mutation; collection trả immutable view.
+- Inheritance: `GameCharacter` abstract được `Hero` và `Minion` mở rộng.
+- Strategy: `CardEffect`, `EffectStrategy` registry và `HeroPower`.
+- Command: sealed `GameCommand` được dispatch duy nhất bởi `GameCommandHandler`.
+- Factory: `DeckFactory` tạo deck hợp lệ, `GameFactory` là cổng production duy nhất
+  để tạo `Game` aggregate.
+- Memento: `GameMemento` rollback player/deck/character và turn/status state khi command nhiều effect lỗi.
+- Repository: `CatalogRepository`, `GameResultRepository` tách khỏi JDBC adapter.
+- Concurrency: `GameCommandHandler` lấy `GameSession` và khóa riêng từng game;
+  `GameEngine` là domain service stateless, test không tự khóa.
 
 ## Cấu trúc
 
 ```text
-server-java/  Spring Boot, domain game, WebSocket, room, JDBC và JUnit (Java chính)
-  src/main/java/vn/coincard/server/
-    model/GameCharacter.java      # Inheritance
-    game/Hero.java, Minion.java   # Domain
-    effect/*, power/*             # Strategy
-    combat/CombatService.java
-    service/GameService, RoomService, GamePersistenceService  # SRP
-    mapper/GameStateMapper.java   # Serialization tách biệt
-    repository/*, db/*            # Repository
-    websocket/*, net/*            # WebSocket
-client/       React UI, WebSocket client và assets (chỉ frontend)
-shared/       event, payload và state type dùng bởi React
-data/         card catalog; file SQLite runtime bị gitignore
-docs/         kiến trúc, database, protocol, luật và báo cáo test
+server-java/src/main/java/vn/coincard/server/
+  game/       aggregate, command, deck rules, effects, combat
+  application/ loadout, match, command execution, cleanup services
+  room/       room lifecycle, reconnect, rematch
+  net/        WebSocket-facing facade and outbound port
+  db/         repository ports và JDBC adapter
+  mapper/     viewer-specific state mapping
+  ws/         WebSocket transport và session registry
+client/       React UI, DeckBuilderScreen, socket client
+shared/       TypeScript state/event/payload contracts
+data/         card catalog
+docs/         rules, protocol, architecture, database, test report
 ```
 
-Luồng action: `GameScreen` -> `socketService` -> `/ws` ->
-`GameWebSocketHandler` -> `GameService` -> `GameEngine` -> domain (`Game/Player/Hero/Minion` là `GameCharacter`) -> `GameStateMapper` -> snapshot riêng
-cho từng người chơi.
-
-## Build Java độc lập
-
-```bash
-# Windows
-.\server-java\mvnw.cmd clean test
-.\server-java\mvnw.cmd package
-# Linux/macOS
-./server-java/mvnw clean test
-./server-java/mvnw package
-# NPM wrapper (cross-platform)
-npm run test:java
-npm run build:java
-```
+Chi tiết: [docs/GAME_RULES.md](docs/GAME_RULES.md),
+[docs/SOCKET_PROTOCOL.md](docs/SOCKET_PROTOCOL.md),
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).

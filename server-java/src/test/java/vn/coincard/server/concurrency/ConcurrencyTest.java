@@ -1,69 +1,83 @@
 package vn.coincard.server.concurrency;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
-import vn.coincard.server.game.*;
+import vn.coincard.server.game.CardType;
+import vn.coincard.server.game.CardTypes;
+import vn.coincard.server.game.Deck;
+import vn.coincard.server.game.Game;
+import vn.coincard.server.game.GameException;
+import vn.coincard.server.game.GameFactory;
+import vn.coincard.server.game.GameTestAccess;
+import vn.coincard.server.game.GameTestHarness;
+import vn.coincard.server.game.Hero;
+import vn.coincard.server.game.HeroClass;
+import vn.coincard.server.game.Player;
+import vn.coincard.server.game.Rarity;
 
 class ConcurrencyTest {
-
   @Test
-  void concurrentPlayCardDoesNotCorruptState() throws Exception {
-    GameEngine engine = new GameEngine();
-    Hero h1 = new Hero("h1", "Jaina", "MAGE", "Fireblast", 2, "img");
-    Hero h2 = new Hero("h2", "Rexxar", "HUNTER", "Steady Shot", 2, "img");
-    // Deck with cheap minions
+  void concurrentDuplicateCommandCommitsOnlyOnce() throws Exception {
+    GameTestHarness engine = new GameTestHarness();
+    Hero firstHero = new Hero("h1", "Jaina", HeroClass.MAGE, "Fireblast", 2, "img");
+    Hero secondHero = new Hero("h2", "Rexxar", HeroClass.HUNTER, "Steady Shot", 2, "img");
     List<CardTypes.CardDefinition> cards = List.of(
-        new CardTypes.CardDefinition("c1", "M", "m", "", "MINION", "COMMON", 1, 1, 1, "NEUTRAL", "img", List.of(), List.of(), true),
-        new CardTypes.CardDefinition("c2", "M", "m", "", "MINION", "COMMON", 1, 1, 1, "NEUTRAL", "img", List.of(), List.of(), true),
-        new CardTypes.CardDefinition("c3", "M", "m", "", "MINION", "COMMON", 1, 1, 1, "NEUTRAL", "img", List.of(), List.of(), true)
-    );
-    Deck d1 = new Deck(cards.stream().map(c -> new CardTypes.CardDefinition(c.id()+"-1", c.name(), c.slug(), c.description(), c.type(), c.rarity(), c.manaCost(), c.attack(), c.health(), c.heroClass(), c.imagePath(), c.effects(), c.keywords(), true)).toList());
-    Deck d2 = new Deck(cards.stream().map(c -> new CardTypes.CardDefinition(c.id()+"-2", c.name(), c.slug(), c.description(), c.type(), c.rarity(), c.manaCost(), c.attack(), c.health(), c.heroClass(), c.imagePath(), c.effects(), c.keywords(), true)).toList());
-    Player p1 = new Player("p1", "One", h1, d1);
-    Player p2 = new Player("p2", "Two", h2, d2);
-    engine.createGame("g1", "R1", new GameEngine.PlayerInit("p1", "One", h1, d1), new GameEngine.PlayerInit("p2", "Two", h2, d2));
-    final Game game = engine.getGame("g1");
-    game.start();
-    // Give p1 mana
-    Player actualP1 = game.getPlayerById("p1");
-    for (int i = 0; i < 5; i++) actualP1.increaseMaxMana();
-    actualP1.refillMana();
-    // Add two cards to hand
-    CardTypes.CardDefinition c1 = new CardTypes.CardDefinition("play1", "M", "m", "", "MINION", "COMMON", 1, 1, 1, "NEUTRAL", "img", List.of(), List.of(), true);
-    CardTypes.CardDefinition c2 = new CardTypes.CardDefinition("play2", "M", "m", "", "MINION", "COMMON", 1, 1, 1, "NEUTRAL", "img", List.of(), List.of(), true);
-    actualP1.addToHand(c1);
-    actualP1.addToHand(c2);
+        minion("deck-1", "deck-1"), minion("deck-2", "deck-2"), minion("deck-3", "deck-3"),
+        minion("deck-4", "deck-4"));
+    Game game = engine.createGame("g1", "R1",
+        new GameFactory.PlayerInit("p1", "One", firstHero, new Deck(cards)),
+        new GameFactory.PlayerInit("p2", "Two", secondHero, new Deck(cards)));
+    GameTestAccess.start(game, "p1");
+    Player player = game.getPlayerById("p1");
+    player.refillMana();
+    CardTypes.CardDefinition duplicateCommandCard = minion("play-once", "play-once");
+    player.addToHand(duplicateCommandCard);
 
-    ExecutorService exec = Executors.newFixedThreadPool(2);
-    CountDownLatch latch = new CountDownLatch(2);
-    // Two threads try to play different cards concurrently — synchronized(game) should prevent corruption
-    exec.submit(() -> {
-      try { 
-        synchronized (game) {
-          try { engine.playCard("g1", "p1", "play1", null); } catch (Exception ignored) {}
-        }
-      } finally { latch.countDown(); }
-    });
-    exec.submit(() -> {
-      try { 
-        synchronized (game) {
-          try { engine.playCard("g1", "p1", "play2", null); } catch (Exception ignored) {}
-        }
-      } finally { latch.countDown(); }
-    });
-    latch.await();
-    exec.shutdown();
-    // State must be consistent: not corrupted, mana and board within bounds
-    int mana = actualP1.currentMana();
-    int board = actualP1.boardCount();
-    assertTrue(mana >= 0 && mana <= 10);
-    assertTrue(board >= 0 && board <= 2);
-    // At least one card was played if mana decreased
-    assertTrue(board == 1 || board == 2 || mana < 10);
+    ExecutorService executor = Executors.newFixedThreadPool(2);
+    CountDownLatch ready = new CountDownLatch(2);
+    CountDownLatch release = new CountDownLatch(1);
+    AtomicInteger rejected = new AtomicInteger();
+    try {
+      Future<?> first = executor.submit(() -> playSameCard(engine, ready, release, rejected));
+      Future<?> second = executor.submit(() -> playSameCard(engine, ready, release, rejected));
+      assertTrue(ready.await(2, java.util.concurrent.TimeUnit.SECONDS));
+      release.countDown();
+      first.get();
+      second.get();
+    } finally {
+      executor.shutdownNow();
+    }
+
+    assertEquals(1, player.cardsPlayed());
+    assertEquals(1, player.boardCount());
+    assertEquals(1, rejected.get());
+    assertTrue(player.currentMana() >= 0 && player.currentMana() <= 10);
+  }
+
+  private void playSameCard(GameTestHarness engine, CountDownLatch ready, CountDownLatch release,
+      AtomicInteger rejected) {
+    ready.countDown();
+    try {
+      release.await();
+      engine.playCard("g1", "p1", "play-once", null);
+    } catch (GameException.CardNotInHand expected) {
+      rejected.incrementAndGet();
+    } catch (InterruptedException interrupted) {
+      Thread.currentThread().interrupt();
+      throw new AssertionError("Test thread interrupted", interrupted);
+    }
+  }
+
+  private CardTypes.CardDefinition minion(String id, String slug) {
+    return new CardTypes.CardDefinition(id, "M", slug, "", CardType.MINION, Rarity.COMMON,
+        1, 1, 1, HeroClass.NEUTRAL, "img", List.of(), List.of(), true);
   }
 }

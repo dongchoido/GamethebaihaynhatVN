@@ -1,6 +1,7 @@
 import { GameStoreProvider, useGameStore } from './store/gameStore';
 import { HomeScreen } from './screens/HomeScreen';
 import { LobbyScreen } from './screens/LobbyScreen';
+import { DeckBuilderScreen } from './screens/DeckBuilderScreen';
 import { GameScreen } from './screens/GameScreen';
 import { GameOverScreen } from './screens/GameOverScreen';
 import './styles/game.css';
@@ -10,6 +11,8 @@ function PhaseRouter() {
   switch (phase) {
     case 'lobby':
       return <LobbyScreen />;
+    case 'deck':
+      return <DeckBuilderScreen />;
     case 'game':
       return <GameScreen />;
     case 'over':

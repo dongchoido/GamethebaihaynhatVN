@@ -23,9 +23,7 @@ public final class CombatService {
         .filter(m -> m.hasTaunt() && !m.isDead()).collect(Collectors.toList());
 
     if (targetId.equals(opponent.id())) {
-      if (!opponent.getBoard().isEmpty()) {
-        throw new GameException.MinionsBlockHero();
-      }
+      if (!taunts.isEmpty()) throw new GameException.TauntRequired();
       player.recordDamage(opponent.heroState().takeDamage(attacker.currentAttack()));
       attacker.markAsAttacked();
       return;

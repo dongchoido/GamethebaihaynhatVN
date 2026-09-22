@@ -1,15 +1,24 @@
 package vn.coincard.server.combat;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import org.junit.jupiter.api.Test;
-import vn.coincard.server.game.*;
 import java.util.List;
+import org.junit.jupiter.api.Test;
+import vn.coincard.server.game.CombatService;
+import vn.coincard.server.game.Deck;
+import vn.coincard.server.game.GameException;
+import vn.coincard.server.game.Hero;
+import vn.coincard.server.game.HeroClass;
+import vn.coincard.server.game.Minion;
+import vn.coincard.server.game.Player;
 
 class CombatServiceTest {
 
   private Player player(String id) {
-    Hero hero = new Hero("h", "Test", "MAGE", "Power", 2, "img");
+    Hero hero = new Hero("h", "Test", HeroClass.MAGE, "Power", 2, "img");
     return new Player(id, id, hero, new Deck(List.of()));
   }
 
@@ -29,15 +38,15 @@ class CombatServiceTest {
   }
 
   @Test
-  void cannotAttackHeroIfMinionsExist() {
+  void nonTauntMinionsDoNotBlockHero() {
     Player p1 = player("p1");
     Player p2 = player("p2");
     Minion a = new Minion("a1", "c1", "A", 3, 3, "p1", true, "img");
     Minion b = new Minion("b1", "c2", "B", 2, 2, "p2", false, "img");
     p1.summonMinion(a);
     p2.summonMinion(b);
-    assertThrows(GameException.MinionsBlockHero.class,
-        () -> CombatService.resolveAttack(p1, p2, "a1", "p2"));
+    assertDoesNotThrow(() -> CombatService.resolveAttack(p1, p2, "a1", "p2"));
+    assertEquals(27, p2.heroState().currentHealth());
   }
 
   @Test

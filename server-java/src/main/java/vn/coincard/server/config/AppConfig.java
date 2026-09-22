@@ -1,23 +1,43 @@
 package vn.coincard.server.config;
 
 import org.springframework.context.annotation.Configuration;
-import org.springframework.web.socket.config.annotation.EnableWebSocket;
-import org.springframework.web.socket.config.annotation.WebSocketConfigurer;
-import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry;
-import vn.coincard.server.ws.GameWebSocketHandler;
+import org.springframework.context.annotation.Bean;
+import vn.coincard.server.application.ActiveGameRegistry;
+import vn.coincard.server.game.EffectResolver;
+import vn.coincard.server.game.GameCommandHandler;
+import vn.coincard.server.game.GameEngine;
+import vn.coincard.server.game.GameFactory;
+import vn.coincard.server.game.GameSessionRegistry;
+import vn.coincard.server.game.HeroPower;
+import vn.coincard.server.game.HeroPowerRegistry;
+import vn.coincard.server.game.RandomSource;
 
-/** Wiring: /ws endpoint. DataSource lives in db.DataConfig (avoids a bean cycle). */
+/** Domain and application bean wiring. DataSource lives in db.DataConfig. */
 @Configuration
-@EnableWebSocket
-public class AppConfig implements WebSocketConfigurer {
-  private final GameWebSocketHandler gameWebSocketHandler;
+public class AppConfig {
 
-  public AppConfig(GameWebSocketHandler gameWebSocketHandler) {
-    this.gameWebSocketHandler = gameWebSocketHandler;
+  @Bean
+  GameSessionRegistry gameSessionRegistry() {
+    return new GameSessionRegistry();
   }
 
-  @Override
-  public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
-    registry.addHandler(gameWebSocketHandler, "/ws").setAllowedOrigins("*");
+  @Bean
+  ActiveGameRegistry activeGameRegistry() {
+    return new ActiveGameRegistry();
+  }
+
+  @Bean
+  GameEngine gameEngine(RandomSource randomSource) {
+    return new GameEngine(new EffectResolver(randomSource), new HeroPowerRegistry(HeroPower.defaults()));
+  }
+
+  @Bean
+  GameFactory gameFactory() {
+    return new GameFactory();
+  }
+
+  @Bean
+  GameCommandHandler gameCommandHandler(GameEngine engine, GameSessionRegistry sessions) {
+    return new GameCommandHandler(engine, sessions);
   }
 }

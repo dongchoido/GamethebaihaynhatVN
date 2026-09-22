@@ -1,25 +1,47 @@
 # Luật CoinCard
 
-- Hai hero 30 HP. Một hero về 0 thì thua, cả hai về 0 trong cùng action thì hòa. Đầu hàng kết thúc ngay; không đổi kết quả sau khi kết thúc.
-- Deck 30 lá collectible rẻ nhất trong catalog, không lọc class, shuffle phía server. Catalog hiện có 34 lá; Sheep/Recruit là token.
-- Tay mở đầu 3/4 lá. Đổi lá đắt nhất lấy lá ≤2 mana nếu deck có, không nhân đôi bài. Không bảo đảm có minion chơi được ở mana 1.
-- Mỗi lượt riêng tăng max mana 1 (tối đa 10), hồi đầy và tự rút 1. Người đi trước không rút thêm ở lượt mở đầu.
-- Tay tối đa **6 lá**, bàn tối đa **7 minion mỗi bên**. Tự rút/effect khi tay đầy làm cháy lá vừa rút.
-- Rút thủ công thêm **một lần/lượt**, không tốn mana. Tay đầy hoặc deck hết thì từ chối, không mất bài. Refresh giữ giới hạn. Chưa có fatigue.
-- Minion mới triệu hồi không đánh ngay, trừ CHARGE. Mỗi minion đánh một lần/lượt. Đối thủ còn minion trên bàn thì phải tấn công minion, không được đánh hero; trong số đó TAUNT bắt buộc mục tiêu. Không áp dụng spell/power.
-- Minion giao chiến gây sát thương đồng thời. Damage thống kê là HP thực mất, kể cả phản công; không tính overkill hoặc tự gây damage.
-- Polymorph thay đúng slot bằng Sheep 1/1 kể cả bàn đầy, không tăng thống kê triệu hồi.
-- DESTROY chỉ xét ngưỡng khi có minAttack. Siphon Soul phá minion bất kỳ và hồi 3 hero mình; Shadow Word: Death yêu cầu công ≥5.
-- Action bị từ chối không mất tài nguyên. Effect sau lỗi sẽ hoàn tác cả action.
-- Hero power dùng nhiều lần/lượt nếu đủ mana.
+## Deck và khởi đầu
 
-| Hero | Power (2 mana) |
-| --- | --- |
-| Mage | 1 damage hero địch |
-| Hunter | 2 damage hero địch |
-| Paladin | Recruit 1/1; bàn đầy từ chối không mất mana |
-| Priest | Hồi 2 hero mình, tối đa 30 |
-| Warlock | Tự mất 2 HP và rút 1; hết deck vẫn mất HP, tay đầy cháy lá |
+- Mỗi người có một hero 30 HP và deck đúng 30 lá.
+- Chỉ lá `collectible=true` được đưa vào deck; lá phải là `NEUTRAL` hoặc đúng
+  hero class. Lá thường tối đa 2 bản, Legendary tối đa 1 bản.
+- Người đi trước được chọn ngẫu nhiên, nhận 3 lá và tự rút 1 lá khi bắt đầu lượt
+  đầu. Người đi sau nhận 4 lá và thêm The Coin, sau đó tự rút khi đến lượt.
+- Không có mulligan. Deck được shuffle phía server.
 
-Effect chi tiết ở data/cards.json. Tái đấu cần hai phiếu, tạo gameId mới cùng phòng/hero và chia lại bài.
+## Lượt và tài nguyên
 
+- Đầu lượt: tăng max mana tối đa 10, hồi đầy mana, reset hero power và tự rút 1.
+- Tay tối đa 10 lá. Rút khi tay đầy sẽ burn lá vừa rút.
+- Deck rỗng gây fatigue tăng dần 1, 2, 3... damage cho hero ở mỗi lần rút thất bại.
+- The Coin là spell token không collectible, cho 1 temporary mana trong lượt và
+  không làm tổng mana dùng được vượt 10.
+- Hero power chỉ dùng một lần mỗi lượt. Paladin hero power từ chối khi board đầy.
+
+## Bàn và chiến đấu
+
+- Bàn tối đa 7 minion mỗi bên.
+- Minion mới không được đánh ngay, trừ minion có `CHARGE`.
+- Mỗi minion chỉ đánh một lần trong lượt.
+- Taunt là luật chặn duy nhất: nếu đối thủ có Taunt, attacker phải chọn một
+  Taunt. Nếu không có Taunt, attacker có thể chọn hero hoặc minion bất kỳ.
+- Minion giao chiến gây sát thương đồng thời. Damage thống kê là HP thực mất,
+  không tính overkill.
+- Mọi spell, hero power, fatigue và combat đều kiểm tra kết quả ngay trong cùng
+  command. Hai hero chết trong cùng command là hòa.
+
+## Effect và rollback
+
+- Effect được resolve qua `CardEffect` strategy registry. Target được biểu diễn
+  bằng `GameCharacter` (`Hero` hoặc `Minion`), không dùng `Object` trong effect core.
+- Wire target cho hero luôn là `playerId`; wire target cho minion là `instanceId`.
+  Vì vậy spell `ENEMY_CHARACTER` có thể đánh trực tiếp hero bằng id người chơi.
+- Command nhiều effect tạo `GameMemento` trước commit. Nếu một effect lỗi, hand,
+  mana, board, deck, hero health và thống kê được khôi phục.
+- Catalog CoinCard là nguồn behavior của game; không mô phỏng toàn bộ Hearthstone.
+
+## Kết thúc và tái đấu
+
+- Hero về 0 HP thì game kết thúc; đầu hàng trao thắng cho đối thủ.
+- Hai người cùng vote rematch thì server validate lại loadout đã chọn, shuffle deck
+  mới, chọn người đi trước mới và bắt đầu game mới.

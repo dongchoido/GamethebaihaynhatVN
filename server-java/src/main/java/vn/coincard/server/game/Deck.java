@@ -1,17 +1,20 @@
 package vn.coincard.server.game;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.Random;
 
 /** Server-side shuffled card deck. */
 public class Deck {
   private List<CardTypes.CardDefinition> cards;
-  private final Random random = new Random();
+  private final RandomSource randomSource;
 
   public Deck(List<CardTypes.CardDefinition> cards) {
+    this(cards, RandomSource.threadLocal());
+  }
+
+  public Deck(List<CardTypes.CardDefinition> cards, RandomSource randomSource) {
     this.cards = new ArrayList<>(cards);
+    this.randomSource = randomSource;
     shuffle();
   }
 
@@ -21,31 +24,21 @@ public class Deck {
     return cards.remove(0);
   }
 
-  public void returnToBottom(CardTypes.CardDefinition card) {
-    cards.add(card);
-  }
-
-  /** Opaque undo. */
-  public Runnable checkpoint() {
-    List<CardTypes.CardDefinition> snapshot = new ArrayList<>(cards);
-    return () -> cards = new ArrayList<>(snapshot);
-  }
-
-  /** Cheapest card costing <= maxCost, or null. */
-  public CardTypes.CardDefinition drawCheapest(int maxCost) {
-    int best = -1;
-    for (int i = 0; i < cards.size(); i++) {
-      CardTypes.CardDefinition c = cards.get(i);
-      if (c.manaCost() > maxCost) continue;
-      if (best == -1 || c.manaCost() < cards.get(best).manaCost()) best = i;
+  record State(List<CardTypes.CardDefinition> cards) {
+    State {
+      cards = List.copyOf(cards);
     }
-    return best == -1 ? null : cards.remove(best);
+  }
+
+  State snapshotState() {
+    return new State(cards);
+  }
+
+  void restoreState(State state) {
+    cards = new ArrayList<>(state.cards());
   }
 
   private void shuffle() {
-    for (int i = cards.size() - 1; i > 0; i--) {
-      int j = random.nextInt(i + 1);
-      Collections.swap(cards, i, j);
-    }
+    randomSource.shuffle(cards);
   }
 }

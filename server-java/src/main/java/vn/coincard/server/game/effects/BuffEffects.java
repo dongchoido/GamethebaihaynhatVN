@@ -6,7 +6,7 @@ import vn.coincard.server.game.Minion;
 public final class BuffEffects {
   private BuffEffects() {}
 
-  public static class BuffAttackEffect implements ICardEffect {
+  public static class BuffAttackEffect implements CardEffect {
     private final int amount;
     public BuffAttackEffect(int amount) { this.amount = amount; }
     @Override
@@ -15,7 +15,7 @@ public final class BuffEffects {
     }
   }
 
-  public static class BuffHealthEffect implements ICardEffect {
+  public static class BuffHealthEffect implements CardEffect {
     private final int amount;
     public BuffHealthEffect(int amount) { this.amount = amount; }
     @Override

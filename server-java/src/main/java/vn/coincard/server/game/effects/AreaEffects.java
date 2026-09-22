@@ -10,7 +10,7 @@ import vn.coincard.server.game.TokenCards;
 public final class AreaEffects {
   private AreaEffects() {}
 
-  public static class TwistingNetherEffect implements ICardEffect {
+  public static class TwistingNetherEffect implements CardEffect {
     @Override
     public void execute(EffectContext context) {
       for (Minion m : context.player.getBoard()) m.takeDamage(m.currentHealth());
@@ -18,7 +18,7 @@ public final class AreaEffects {
     }
   }
 
-  public static class AoeDamageEffect implements ICardEffect {
+  public static class AoeDamageEffect implements CardEffect {
     private final int amount;
     public AoeDamageEffect(int amount) { this.amount = amount; }
     @Override
@@ -32,7 +32,7 @@ public final class AreaEffects {
     }
   }
 
-  public static class DestroyEffect implements ICardEffect {
+  public static class DestroyEffect implements CardEffect {
     private final int minAttack;
     public DestroyEffect(int minAttack) { this.minAttack = minAttack; }
     @Override
@@ -43,14 +43,14 @@ public final class AreaEffects {
     }
   }
 
-  public static class MultiplyHealthEffect implements ICardEffect {
+  public static class MultiplyHealthEffect implements CardEffect {
     @Override
     public void execute(EffectContext context) {
       if (context.target instanceof Minion m) m.modifyHealth(m.currentHealth());
     }
   }
 
-  public static class TransformEffect implements ICardEffect {
+  public static class TransformEffect implements CardEffect {
     @Override
     public void execute(EffectContext context) {
       if (!(context.target instanceof Minion target)) return;

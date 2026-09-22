@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react';
 import {
   GameStatus,
+  HeroClass,
   ServerEvents,
+  type ActionRejectedResponse,
   type GameStatePayload,
   type PlayerJoinedResponse,
+  type LoadoutAcceptedResponse,
 } from '@coincard/shared';
 import { socketService } from '../socket/socketService';
 import { useConnection } from '../socket/useConnection';
@@ -29,7 +32,14 @@ export function LobbyScreen() {
       }
     };
     const onRoomReady = () => setRoomReady(true);
-    const onRejected = (res: { code: string; message: string }) => {
+    const onLoadoutAccepted = (res: LoadoutAcceptedResponse) => {
+      setLobbyPlayers(res.players);
+      setRoomReady(res.players.length >= 2);
+      const me = res.players.find((p) => p.playerId === session?.playerId);
+      if (me) setSelectedHeroId(me.heroClass ?? null);
+      setLastError(null);
+    };
+    const onRejected = (res: ActionRejectedResponse) => {
       if (res.code === 'RECONNECT_FAILED') {
         reset();
         return;
@@ -52,23 +62,25 @@ export function LobbyScreen() {
 
     socket.on(ServerEvents.PLAYER_JOINED, onPlayerJoined);
     socket.on(ServerEvents.ROOM_READY, onRoomReady);
+    socket.on(ServerEvents.LOADOUT_ACCEPTED, onLoadoutAccepted);
     socket.on(ServerEvents.GAME_STATE_UPDATED, onGameState);
     socket.on(ServerEvents.ACTION_REJECTED, onRejected);
     socket.on(ServerEvents.PLAYER_DISCONNECTED, onDisconnected);
     return () => {
       socket.off(ServerEvents.PLAYER_JOINED, onPlayerJoined);
       socket.off(ServerEvents.ROOM_READY, onRoomReady);
+      socket.off(ServerEvents.LOADOUT_ACCEPTED, onLoadoutAccepted);
       socket.off(ServerEvents.GAME_STATE_UPDATED, onGameState);
       socket.off(ServerEvents.ACTION_REJECTED, onRejected);
       socket.off(ServerEvents.PLAYER_DISCONNECTED, onDisconnected);
     };
   }, [setGameState, setPhase, setLobbyPlayers, setLastError, setSelectedHeroId, reset, session?.playerId]);
 
-  const handleSelectHero = (heroClass: string) => {
+  const handleSelectHero = (heroClass: HeroClass) => {
     if (!session || !connected) return;
     setSelectedHeroId(heroClass);
     playSound(SOUND.heroSelect);
-    socketService.selectDeck(heroClass, session.roomCode);
+    setPhase('deck');
   };
 
   const handleBack = () => {

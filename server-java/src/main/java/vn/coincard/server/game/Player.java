@@ -8,7 +8,10 @@ import java.util.List;
 public class Player {
   private int mana;
   private int maxMana;
-  private List<CardTypes.CardDefinition> hand = new ArrayList<>();
+  private int temporaryMana;
+  private int fatigueDamage;
+  private boolean heroPowerUsed;
+  private final List<CardTypes.CardDefinition> hand = new ArrayList<>();
   private final List<Minion> board = new ArrayList<>();
   private int damageDealtValue;
   private int cardsPlayedValue;
@@ -27,15 +30,11 @@ public class Player {
   private final Deck deck;
 
   public String id() { return playerId; }
-  public String getPlayerId() { return playerId; }
-  public String getName() { return name; }
-  public Hero getHero() { return hero; }
-  // Encapsulation: không expose collection mutable trực tiếp
-  public List<CardTypes.CardDefinition> getHand() {
-    return Collections.unmodifiableList(hand);
-  }
-  public int currentMana() { return mana; }
+  public String name() { return name; }
+  public int currentMana() { return mana + temporaryMana; }
   public int currentMaxMana() { return maxMana; }
+  public int fatigueDamage() { return fatigueDamage; }
+  public boolean heroPowerUsed() { return heroPowerUsed; }
   public List<CardTypes.CardDefinition> handCards() { return Collections.unmodifiableList(hand); }
   public int handCount() { return hand.size(); }
   public int boardCount() { return board.size(); }
@@ -52,15 +51,29 @@ public class Player {
   public void recordCardPlayed() { cardsPlayedValue++; }
 
   public void spendMana(int amount) {
-    if (amount < 0 || amount > mana) throw new IllegalArgumentException("Mana không hợp lệ.");
-    mana -= amount;
+    if (amount < 0 || amount > currentMana()) throw new IllegalArgumentException("Mana không hợp lệ.");
+    int fromTemporary = Math.min(temporaryMana, amount);
+    temporaryMana -= fromTemporary;
+    mana -= amount - fromTemporary;
   }
 
-  public void refillMana() { mana = maxMana; }
+  public void refillMana() {
+    mana = maxMana;
+    temporaryMana = 0;
+    heroPowerUsed = false;
+  }
+
+  public void gainTemporaryMana(int amount) {
+    if (amount < 0) throw new IllegalArgumentException("Temporary mana không hợp lệ.");
+    temporaryMana = Math.min(Constants.MAX_MANA - mana, temporaryMana + amount);
+  }
+
+  public void markHeroPowerUsed() {
+    if (heroPowerUsed) throw new GameException.HeroPowerAlreadyUsed();
+    heroPowerUsed = true;
+  }
 
   public void increaseMaxMana() { maxMana = Math.min(maxMana + 1, Constants.MAX_MANA); }
-
-  public CardTypes.CardDefinition drawCard() { return deck.drawOne(); }
 
   public void drawAndAddToHand(int count) {
     for (int i = 0; i < count; i++) {
@@ -69,32 +82,23 @@ public class Player {
     }
   }
 
-  /** Opening-hand guarantee: swap most expensive hand card for cheapest deck card (<= maxCost). */
-  public void guaranteeCheapOpener(int maxCost) {
-    if (hand.stream().anyMatch(c -> c.manaCost() <= maxCost)) return;
-    int expensiveIndex = -1;
-    for (int i = 0; i < hand.size(); i++) {
-      if (expensiveIndex == -1 || hand.get(i).manaCost() > hand.get(expensiveIndex).manaCost()) {
-        expensiveIndex = i;
-      }
+  /** Draws one card, burns it when the hand is full, or applies fatigue. */
+  public void drawForTurn() {
+    if (deck.size() == 0) {
+      fatigueDamage++;
+      hero.takeDamage(fatigueDamage);
+      return;
     }
-    if (expensiveIndex == -1) return;
-    CardTypes.CardDefinition removed = hand.remove(expensiveIndex);
-    CardTypes.CardDefinition cheap = deck.drawCheapest(maxCost);
-    if (cheap != null) {
-      deck.returnToBottom(removed);
-      addToHand(cheap);
-    } else {
-      addToHand(removed);
-    }
+    addToHand(deck.drawOne());
   }
 
   /** Không expose mutable list trực tiếp — chỉ thay đổi qua behavior. */
   public List<Minion> getBoard() { return Collections.unmodifiableList(board); }
 
-  public void addToHand(CardTypes.CardDefinition card) {
-    if (hand.size() >= Constants.MAX_HAND_SIZE) return; // burn
+  public boolean addToHand(CardTypes.CardDefinition card) {
+    if (hand.size() >= Constants.MAX_HAND_SIZE) return false; // burn
     hand.add(card);
+    return true;
   }
 
   public CardTypes.CardDefinition findCardInHand(String instanceId) {
@@ -142,27 +146,38 @@ public class Player {
     throw new IllegalArgumentException("Không thể thay minion.");
   }
 
-  /** Opaque undo. */
-  public Runnable checkpoint() {
-    List<CardTypes.CardDefinition> handSnap = new ArrayList<>(hand);
-    List<Minion> boardSnap = new ArrayList<>(board);
-    List<Runnable> undoUnits = boardSnap.stream().map(Minion::checkpoint).toList();
-    Runnable undoHero = hero.checkpoint();
-    Runnable undoDeck = deck.checkpoint();
-    int manaSnap = mana, maxManaSnap = maxMana;
-    int dmg = damageDealtValue, played = cardsPlayedValue, summoned = minionsSummonedValue;
-    return () -> {
-      hand = new ArrayList<>(handSnap);
-      board.clear();
-      board.addAll(boardSnap);
-      undoUnits.forEach(Runnable::run);
-      undoHero.run();
-      undoDeck.run();
-      mana = manaSnap;
-      maxMana = maxManaSnap;
-      damageDealtValue = dmg;
-      cardsPlayedValue = played;
-      minionsSummonedValue = summoned;
-    };
+  record State(int mana, int maxMana, int temporaryMana, int fatigueDamage,
+      boolean heroPowerUsed, List<CardTypes.CardDefinition> hand, List<Minion.State> board,
+      Deck.State deck, Hero.State hero, int damageDealt, int cardsPlayed, int minionsSummoned) {
+    State {
+      hand = List.copyOf(hand);
+      board = List.copyOf(board);
+    }
+  }
+
+  State snapshotState() {
+    return new State(mana, maxMana, temporaryMana, fatigueDamage, heroPowerUsed, hand,
+        board.stream().map(Minion::snapshotState).toList(), deck.snapshotState(), hero.snapshotState(),
+        damageDealtValue, cardsPlayedValue, minionsSummonedValue);
+  }
+
+  void restoreState(State state) {
+    hand.clear();
+    hand.addAll(state.hand());
+    board.clear();
+    for (Minion.State minionState : state.board()) {
+      minionState.instance().restoreState(minionState);
+      board.add(minionState.instance());
+    }
+    deck.restoreState(state.deck());
+    hero.restoreState(state.hero());
+    mana = state.mana();
+    maxMana = state.maxMana();
+    temporaryMana = state.temporaryMana();
+    fatigueDamage = state.fatigueDamage();
+    heroPowerUsed = state.heroPowerUsed();
+    damageDealtValue = state.damageDealt();
+    cardsPlayedValue = state.cardsPlayed();
+    minionsSummonedValue = state.minionsSummoned();
   }
 }

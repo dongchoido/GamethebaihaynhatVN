@@ -1,5 +1,6 @@
 const assert = require('node:assert/strict');
 const { connect } = require('./e2e-ws.cjs');
+const { deckFor } = require('./e2e-deck.cjs');
 const url = process.env.GAME_URL || 'http://127.0.0.1:3000';
 const io = (u, opts) => connect(u, opts);
 function wait(socket, event, predicate = () => true) {
@@ -33,8 +34,9 @@ async function main() {
     a.auth = { sessionToken: created.sessionToken };
     b.auth = { sessionToken: joined.sessionToken };
     const states = Promise.all([wait(a, 'GAME_STATE_UPDATED'), wait(b, 'GAME_STATE_UPDATED')]);
-    a.emit('SELECT_DECK', { roomCode: created.roomCode, heroId: 'MAGE' });
-    b.emit('SELECT_DECK', { roomCode: created.roomCode, heroId: 'HUNTER' });
+    const [mageDeck, hunterDeck] = await Promise.all([deckFor(url, 'MAGE'), deckFor(url, 'HUNTER')]);
+    a.emit('SUBMIT_LOADOUT', { roomCode: created.roomCode, heroClass: 'MAGE', cardSlugs: mageDeck });
+    b.emit('SUBMIT_LOADOUT', { roomCode: created.roomCode, heroClass: 'HUNTER', cardSlugs: hunterDeck });
     const [first, second] = await states;
     assert.equal(first.gameState.gameId, second.gameState.gameId);
     assert.equal(first.gameState.status, 'PLAYING');
@@ -46,11 +48,15 @@ async function main() {
     const restored = wait(b, 'GAME_STATE_UPDATED');
     b.on('connect', () => b.emit('RECONNECT_GAME', { sessionToken: joined.sessionToken }));
     b.connect(); await back;
-    assert.equal((await restored).gameState.gameId, first.gameState.gameId);
+    const restoredState = (await restored).gameState;
+    assert.equal(restoredState.gameId, first.gameState.gameId);
+    const socketFor = (playerId) => playerId === created.playerId ? a : b;
     const next = wait(a, 'GAME_STATE_UPDATED', r => r.gameState.turn === 2);
-    a.emit('END_TURN', { gameId: first.gameState.gameId }); await next;
+    socketFor(restoredState.activePlayerId).emit('END_TURN', { gameId: first.gameState.gameId });
+    const turnTwo = await next;
     const third = wait(a, 'GAME_STATE_UPDATED', r => r.gameState.turn === 3);
-    b.emit('END_TURN', { gameId: first.gameState.gameId }); await third;
+    socketFor(turnTwo.gameState.activePlayerId).emit('END_TURN', { gameId: first.gameState.gameId });
+    await third;
     assert.equal(errors.length, 0);
     console.log('PASS: opponent notified on reconnect; both players can take turns');
   } finally { a.disconnect(); b.disconnect(); }

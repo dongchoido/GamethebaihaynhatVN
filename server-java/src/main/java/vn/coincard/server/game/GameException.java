@@ -2,7 +2,11 @@ package vn.coincard.server.game;
 
 /** Domain errors mapped to ACTION_REJECTED { code, message }. */
 public abstract class GameException extends RuntimeException {
-  public abstract String code();
+  public abstract ErrorCode errorCode();
+
+  public final String code() {
+    return errorCode().name();
+  }
 
   protected GameException(String message) {
     super(message);
@@ -10,77 +14,78 @@ public abstract class GameException extends RuntimeException {
 
   public static final class NotPlayerTurn extends GameException {
     public NotPlayerTurn() { super("It is not your turn."); }
-    @Override public String code() { return "NOT_PLAYER_TURN"; }
+    @Override public ErrorCode errorCode() { return ErrorCode.NOT_PLAYER_TURN; }
   }
 
   public static final class NotEnoughMana extends GameException {
     public NotEnoughMana() { super("Not enough mana."); }
-    @Override public String code() { return "NOT_ENOUGH_MANA"; }
+    @Override public ErrorCode errorCode() { return ErrorCode.NOT_ENOUGH_MANA; }
   }
 
   public static final class InvalidTarget extends GameException {
     public InvalidTarget(String message) { super(message); }
-    @Override public String code() { return "INVALID_TARGET"; }
+    @Override public ErrorCode errorCode() { return ErrorCode.INVALID_TARGET; }
   }
 
   public static final class BoardFull extends GameException {
     public BoardFull() { super("Your board is full."); }
-    @Override public String code() { return "BOARD_FULL"; }
+    @Override public ErrorCode errorCode() { return ErrorCode.BOARD_FULL; }
   }
 
   public static final class CardNotInHand extends GameException {
     public CardNotInHand() { super("Card is not in your hand."); }
-    @Override public String code() { return "CARD_NOT_IN_HAND"; }
+    @Override public ErrorCode errorCode() { return ErrorCode.CARD_NOT_IN_HAND; }
+  }
+
+  public static final class InvalidDeck extends GameException {
+    public InvalidDeck(String message) { super(message); }
+    @Override public ErrorCode errorCode() { return ErrorCode.INVALID_DECK; }
   }
 
   public static final class RoomFull extends GameException {
     public RoomFull() { super("Room already has 2 players."); }
-    @Override public String code() { return "ROOM_FULL"; }
+    @Override public ErrorCode errorCode() { return ErrorCode.ROOM_FULL; }
   }
 
   public static final class RoomNotFound extends GameException {
     public RoomNotFound() { super("Room not found."); }
-    @Override public String code() { return "ROOM_NOT_FOUND"; }
+    @Override public ErrorCode errorCode() { return ErrorCode.ROOM_NOT_FOUND; }
   }
 
   public static final class ReconnectFailed extends GameException {
     public ReconnectFailed() { super("Phiên chơi đã hết hạn (phòng không còn). Hãy tạo phòng mới."); }
-    @Override public String code() { return "RECONNECT_FAILED"; }
+    @Override public ErrorCode errorCode() { return ErrorCode.RECONNECT_FAILED; }
   }
 
   public static final class InvalidPayload extends GameException {
     public InvalidPayload(String message) { super(message); }
     public InvalidPayload() { super("Dữ liệu gửi lên không hợp lệ."); }
-    @Override public String code() { return "INVALID_PAYLOAD"; }
+    @Override public ErrorCode errorCode() { return ErrorCode.INVALID_PAYLOAD; }
+  }
+
+  public static final class InvalidCommand extends GameException {
+    public InvalidCommand(String message) { super(message); }
+    @Override public ErrorCode errorCode() { return ErrorCode.INVALID_COMMAND; }
+  }
+
+  public static final class InternalError extends GameException {
+    public InternalError() { super("Server không thể xử lý yêu cầu này."); }
+    @Override public ErrorCode errorCode() { return ErrorCode.INTERNAL_ERROR; }
   }
 
   public static final class GameNotRunning extends GameException {
     public GameNotRunning() { super("Game is not in PLAYING status."); }
-    @Override public String code() { return "GAME_NOT_RUNNING"; }
+    @Override public ErrorCode errorCode() { return ErrorCode.GAME_NOT_RUNNING; }
   }
 
-  public static final class HandFull extends GameException {
-    public HandFull() { super("Tay đã đầy (tối đa 6 lá)."); }
-    @Override public String code() { return "HAND_FULL"; }
-  }
-
-  public static final class DeckEmpty extends GameException {
-    public DeckEmpty() { super("Bộ bài đã hết."); }
-    @Override public String code() { return "DECK_EMPTY"; }
-  }
-
-  public static final class AlreadyDrew extends GameException {
-    public AlreadyDrew() { super("Mỗi turn chỉ được rút 1 lá từ bộ bài."); }
-    @Override public String code() { return "ALREADY_DREW"; }
+  public static final class HeroPowerAlreadyUsed extends GameException {
+    public HeroPowerAlreadyUsed() { super("Mỗi lượt chỉ được dùng hero power một lần."); }
+    @Override public ErrorCode errorCode() { return ErrorCode.HERO_POWER_ALREADY_USED; }
   }
 
   public static final class TauntRequired extends GameException {
     public TauntRequired() { super("Phải tấn công quái Taunt trước."); }
-    @Override public String code() { return "TAUNT_REQUIRED"; }
+    @Override public ErrorCode errorCode() { return ErrorCode.TAUNT_REQUIRED; }
   }
 
-  public static final class MinionsBlockHero extends GameException {
-    public MinionsBlockHero() { super("Đối thủ còn minion trên bàn — phải tấn công minion trước."); }
-    @Override public String code() { return "MINIONS_BLOCK_HERO"; }
-  }
 }

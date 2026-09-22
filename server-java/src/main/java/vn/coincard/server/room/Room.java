@@ -5,6 +5,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import vn.coincard.server.game.GameException;
+import vn.coincard.server.game.HeroClass;
 
 /** Two-player room with reconnect sessions and rematch voting. */
 public class Room {
@@ -36,31 +37,31 @@ public class Room {
 
   /** Live reference for internal mutation only. */
   synchronized RoomPlayer internal(String playerId) {
-    return players.stream().filter(p -> p.playerId.equals(playerId)).findFirst().orElse(null);
+    return players.stream().filter(p -> p.playerId().equals(playerId)).findFirst().orElse(null);
   }
 
   public synchronized RoomPlayer getPlayerBySession(String sessionToken) {
-    RoomPlayer p = players.stream().filter(x -> x.sessionToken.equals(sessionToken)).findFirst().orElse(null);
+    RoomPlayer p = players.stream().filter(x -> x.sessionToken().equals(sessionToken))
+        .findFirst().orElse(null);
     return p == null ? null : p.copy();
   }
 
-  public synchronized void selectHero(String playerId, String heroClass) {
+  public synchronized void selectLoadout(String playerId, HeroClass heroClass, List<String> cardSlugs) {
     RoomPlayer p = internal(playerId);
     if (p == null) throw new IllegalArgumentException("Player không tồn tại.");
-    p.heroClass = heroClass;
-    p.ready = true;
+    p.selectLoadout(heroClass, cardSlugs);
     touch();
   }
 
   public synchronized void clearReady() {
-    for (RoomPlayer player : players) player.ready = false;
+    for (RoomPlayer player : players) player.clearReady();
     touch();
   }
 
   public synchronized void bindSocket(String playerId, String socketId) {
     RoomPlayer p = internal(playerId);
     if (p == null) throw new IllegalArgumentException("Player không tồn tại.");
-    p.socketId = socketId;
+    p.bindSocket(socketId);
     touch();
   }
 
@@ -72,7 +73,7 @@ public class Room {
 
   public synchronized boolean isIdle(long ttlMs) {
     return System.currentTimeMillis() - lastActivityAt >= ttlMs
-        && players.stream().allMatch(p -> p.socketId == null);
+        && players.stream().allMatch(p -> p.socketId() == null);
   }
 
   public synchronized boolean tryStart() {
@@ -90,8 +91,8 @@ public class Room {
 
   public synchronized RoomPlayer removeSocket(String socketId) {
     for (RoomPlayer p : players) {
-      if (socketId.equals(p.socketId)) {
-        p.socketId = null;
+      if (socketId.equals(p.socketId())) {
+        p.clearSocket();
         touch();
         return p.copy();
       }
@@ -110,7 +111,9 @@ public class Room {
     starting = true;
     started = false;
     rematchVotes.clear();
-    for (RoomPlayer p : players) p.ready = true;
+    for (RoomPlayer p : players) {
+      if (!p.deckReady()) throw new IllegalStateException("Loadout tái đấu không hợp lệ.");
+    }
     touch();
     return true;
   }

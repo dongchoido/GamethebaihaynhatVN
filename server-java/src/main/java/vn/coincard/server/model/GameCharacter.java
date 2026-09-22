@@ -14,11 +14,6 @@ public abstract class GameCharacter {
     this.currentHealth = maxHealth;
   }
 
-  protected GameCharacter(int currentHealth, int maxHealth) {
-    this.maxHealth = maxHealth;
-    this.currentHealth = Math.min(currentHealth, maxHealth);
-  }
-
   /** Trả về sát thương thực tế đã trừ (không overkill). */
   public int takeDamage(int amount) {
     if (amount < 0) {
@@ -40,21 +35,12 @@ public abstract class GameCharacter {
     return currentHealth <= 0;
   }
 
-  public int getCurrentHealth() {
+  public int currentHealth() {
     return currentHealth;
   }
 
-  public int getMaxHealth() {
-    return maxHealth;
-  }
-
-  // Giữ API cũ cho tương thích với code hiện tại
-  public int currentHealth() {
-    return getCurrentHealth();
-  }
-
   public int maxHealth() {
-    return getMaxHealth();
+    return maxHealth;
   }
 
   protected void setCurrentHealth(int value) {
@@ -64,20 +50,4 @@ public abstract class GameCharacter {
   protected void setMaxHealth(int value) {
     maxHealth = value;
   }
-
-  /** Dùng để checkpoint/rollback (Memento). */
-  public Runnable checkpointHealth() {
-    int h = currentHealth;
-    int mh = maxHealth;
-    return () -> {
-      currentHealth = h;
-      maxHealth = mh;
-    };
-  }
-
-  public Runnable checkpoint() {
-    return checkpointHealth();
-  }
-
-  public abstract String getCharacterType();
 }

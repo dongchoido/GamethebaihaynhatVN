@@ -1,5 +1,6 @@
 // E2E: mô phỏng 2 browser chơi qua WebSocket thật (server Java).
 const { connect } = require('./e2e-ws.cjs');
+const { deckFor } = require('./e2e-deck.cjs');
 
 const URL = process.env.GAME_URL || 'http://localhost:3000';
 const results = [];
@@ -39,26 +40,38 @@ async function main() {
   await p1JoinedPromise;
   check('PLAYER_JOINED đủ 2 người', joined.players && joined.players.length === 2);
 
-  // Cả 2 chọn hero
+  // Cả 2 submit loadout hợp lệ do catalog Java cung cấp
   const startedPromise = once(p1, 'GAME_STARTED');
   const statePromise = once(p1, 'GAME_STATE_UPDATED');
-  p1.emit('SELECT_DECK', { heroId: 'MAGE', roomCode });
-  p2.emit('SELECT_DECK', { heroId: 'HUNTER', roomCode });
+  const [mageDeck, hunterDeck] = await Promise.all([deckFor(URL, 'MAGE'), deckFor(URL, 'HUNTER')]);
+  p1.emit('SUBMIT_LOADOUT', { heroClass: 'MAGE', roomCode, cardSlugs: mageDeck });
+  p2.emit('SUBMIT_LOADOUT', { heroClass: 'HUNTER', roomCode, cardSlugs: hunterDeck });
   const started = await startedPromise;
   check('GAME_STARTED có gameId', !!started.gameId);
   const gameId = started.gameId;
   const state1 = await statePromise;
   const st = state1.gameState;
   check('status PLAYING', st.status === 'PLAYING');
-  check('tay đầu 3/4 lá', st.players[0].handCount === 3 && st.players[1].handCount === 4);
-  check('mana lượt 1 = 1/1', st.players[0].mana === 1 && st.players[0].maxMana === 1);
+  const firstState = st.players.find((p) => p.playerId === st.activePlayerId);
+  const secondState = st.players.find((p) => p.playerId !== st.activePlayerId);
+  check('tay đầu 4/5 lá + Coin', firstState.handCount === 4 && secondState.handCount === 5);
+  check('mana lượt 1 = 1/1', firstState.mana === 1 && firstState.maxMana === 1);
   const aliceId = created.playerId;
   const bobId = joined.playerId;
-  check('P1 đi trước', st.activePlayerId === aliceId);
+  check('người đi trước hợp lệ', st.activePlayerId === aliceId || st.activePlayerId === bobId);
 
   // Che hand đối thủ: P1 không thấy bài P2
   const bobState = st.players.find((p) => p.playerId === bobId);
-  check('che hand đối thủ', bobState.hand.length === 0 && bobState.handCount === 4);
+  check('che hand đối thủ', bobState.hand.length === 0 && bobState.handCount >= 4);
+
+  // Một socket không có reconnect/session token không thể điều khiển trận đang chạy.
+  const intruder = connect(URL);
+  await once(intruder, 'connect');
+  const intruderRejected = once(intruder, 'ACTION_REJECTED');
+  intruder.emit('END_TURN', { gameId });
+  const intruderError = await intruderRejected;
+  check('socket không sở hữu trận bị chặn', intruderError.code === 'INVALID_PAYLOAD');
+  intruder.disconnect();
 
   // Chơi vài turn: mỗi turn thử đánh lá đầu tiên chơi được (minion hoặc spell không-target)
   const NO_TARGET = new Set(['ALL_ENEMY_MINIONS', 'ALL_FRIENDLY_MINIONS', 'ALL_MINIONS', 'FRIENDLY_HERO', 'RANDOM_ENEMY']);

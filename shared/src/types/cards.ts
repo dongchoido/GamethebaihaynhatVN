@@ -21,7 +21,7 @@ export enum HeroClass {
 
 export const EFFECT_TARGETS = [
   'FRIENDLY_MINION', 'ENEMY_MINION', 'ANY_MINION',
-  'ENEMY_HERO', 'FRIENDLY_HERO', 'ENEMY_CHARACTER', 'ANY_CHARACTER',
+  'ENEMY_HERO', 'FRIENDLY_HERO', 'ENEMY_CHARACTER', 'FRIENDLY_CHARACTER', 'ANY_CHARACTER',
   'ALL_ENEMY_MINIONS', 'ALL_FRIENDLY_MINIONS', 'ALL_MINIONS', 'RANDOM_ENEMY', 'SELF',
 ] as const;
 
@@ -32,17 +32,18 @@ export const EXPLICIT_TARGET_TYPES: ReadonlySet<EffectTarget> = new Set([
   'FRIENDLY_MINION',
   'ANY_MINION',
   'ENEMY_CHARACTER',
+  'FRIENDLY_CHARACTER',
   'ANY_CHARACTER',
-  'ENEMY_HERO',
 ]);
 
-export function effectNeedsTarget(target: EffectTarget): boolean {
-  return EXPLICIT_TARGET_TYPES.has(target);
+export function effectNeedsTarget(target: EffectTarget | null | undefined): boolean {
+  return target !== null && target !== undefined && EXPLICIT_TARGET_TYPES.has(target);
 }
 
 export const EFFECT_TYPES = [
   'DAMAGE', 'AOE_DAMAGE', 'HEAL', 'BUFF_ATTACK', 'BUFF_HEALTH',
   'MULTIPLY_HEALTH', 'TRANSFORM', 'DESTROY', 'DESTROY_ALL',
+  'TEMPORARY_MANA',
 ] as const;
 
 export type EffectType = (typeof EFFECT_TYPES)[number];
@@ -53,7 +54,7 @@ export type CardKeyword = (typeof CARD_KEYWORDS)[number];
 export interface EffectDefinition {
   type: EffectType;
   value: number;
-  target: EffectTarget;
+  target: EffectTarget | null;
   count?: number;
   minAttack?: number;
   cardSlug?: string;

@@ -1,17 +1,19 @@
 package vn.coincard.server.game;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import vn.coincard.server.db.CatalogSeedCard;
 
 class CatalogRegressionTest {
   private static List<CardTypes.CardDefinition> catalog;
@@ -21,9 +23,10 @@ class CatalogRegressionTest {
     Path root = Path.of(System.getProperty("user.dir"));
     Path path = root.resolve("data/cards.json");
     if (!Files.exists(path)) path = root.resolve("../data/cards.json").normalize();
-    List<Map<String, Object>> rows = new ObjectMapper().readValue(
-        Files.readString(path), new TypeReference<List<Map<String, Object>>>() {});
-    catalog = rows.stream().map(CardTypes::cardFromMap).toList();
+    ObjectMapper mapper = new ObjectMapper();
+    List<CatalogSeedCard> rows = mapper.readValue(Files.readString(path),
+        mapper.getTypeFactory().constructCollectionType(List.class, CatalogSeedCard.class));
+    catalog = rows.stream().map(CatalogSeedCard::toCardDefinition).toList();
   }
 
   private static CardTypes.CardDefinition card(String slug) {
@@ -40,19 +43,19 @@ class CatalogRegressionTest {
   }
 
   private Fixture setup() {
-    GameEngine engine = new GameEngine();
+    GameTestHarness engine = new GameTestHarness();
     List<CardTypes.CardDefinition> firstDeck = new ArrayList<>();
     List<CardTypes.CardDefinition> secondDeck = new ArrayList<>();
     for (int i = 0; i < 30; i++) {
       firstDeck.add(copy(catalog.get(0), "a-" + i, catalog.get(0).effects()));
       secondDeck.add(copy(catalog.get(0), "b-" + i, catalog.get(0).effects()));
     }
-    Hero heroA = new Hero("ha", "A", "MAGE", "Fireblast", 2, "");
-    Hero heroB = new Hero("hb", "B", "MAGE", "Fireblast", 2, "");
+    Hero heroA = new Hero("ha", "A", HeroClass.MAGE, "Fireblast", 2, "");
+    Hero heroB = new Hero("hb", "B", HeroClass.MAGE, "Fireblast", 2, "");
     Game game = engine.createGame("test-" + UUID.randomUUID(), "ABC123",
-        new GameEngine.PlayerInit("a", "A", heroA, new Deck(firstDeck)),
-        new GameEngine.PlayerInit("b", "B", heroB, new Deck(secondDeck)));
-    game.start();
+        new GameFactory.PlayerInit("a", "A", heroA, new Deck(firstDeck)),
+        new GameFactory.PlayerInit("b", "B", heroB, new Deck(secondDeck)));
+    GameTestAccess.start(game, "a");
     Player a = game.getPlayerById("a");
     Player b = game.getPlayerById("b");
     for (int i = 0; i < Constants.MAX_MANA; i++) a.increaseMaxMana();
@@ -69,7 +72,7 @@ class CatalogRegressionTest {
   @Test
   void everyCatalogSpellResolvesWithAValidTarget() {
     for (CardTypes.CardDefinition source : catalog.stream()
-        .filter(c -> "SPELL".equals(c.type())).toList()) {
+        .filter(c -> c.type() == CardType.SPELL).toList()) {
       Fixture f = setup();
       Minion own = unit(f.a, "own", 8);
       Minion enemy = unit(f.b, "enemy", 8);
@@ -80,8 +83,9 @@ class CatalogRegressionTest {
       String target = null;
       if (targeted != null) {
         target = switch (targeted.target()) {
-          case "FRIENDLY_MINION" -> own.getInstanceId();
-          case "ENEMY_HERO" -> f.b.id();
+          case FRIENDLY_MINION -> own.getInstanceId();
+          case FRIENDLY_HERO, FRIENDLY_CHARACTER, SELF -> f.a.id();
+          case ENEMY_HERO, ENEMY_CHARACTER -> f.b.id();
           default -> enemy.getInstanceId();
         };
       }
@@ -110,7 +114,8 @@ class CatalogRegressionTest {
     unit(f.b, "target", 1);
     CardTypes.CardDefinition source = card("siphon-soul");
     CardTypes.CardDefinition spell = copy(source, "conditional", List.of(
-        new CardTypes.EffectDefinition("DESTROY", 0, "ENEMY_MINION", null, 5, null)));
+        new CardTypes.EffectDefinition(
+            EffectType.DESTROY, 0, EffectTarget.ENEMY_MINION, null, 5, null)));
     f.a.addToHand(spell);
     int hand = f.a.handCount();
     assertThrows(GameException.InvalidTarget.class,
@@ -126,8 +131,10 @@ class CatalogRegressionTest {
     Minion original = unit(f.b, "target", 2);
     CardTypes.CardDefinition source = card("polymorph");
     CardTypes.CardDefinition spell = copy(source, "rollback", List.of(
-        new CardTypes.EffectDefinition("TRANSFORM", 0, "ANY_MINION", null, null, null),
-        new CardTypes.EffectDefinition("DAMAGE", 2, "ANY_MINION", null, null, null)));
+        new CardTypes.EffectDefinition(
+            EffectType.TRANSFORM, 0, EffectTarget.ANY_MINION, null, null, null),
+        new CardTypes.EffectDefinition(
+            EffectType.DAMAGE, 2, EffectTarget.ANY_MINION, null, null, null)));
     f.a.addToHand(spell);
     int hand = f.a.handCount();
     assertThrows(GameException.InvalidTarget.class,
@@ -149,5 +156,5 @@ class CatalogRegressionTest {
     assertEquals(8, f.b.damageDealt());
   }
 
-  private record Fixture(GameEngine engine, Game game, Player a, Player b) {}
+  private record Fixture(GameTestHarness engine, Game game, Player a, Player b) {}
 }

@@ -39,3 +39,6 @@ dist/
 *.db-journal
 
 target/
+
+# The Maven wrapper bootstrap JAR is source-controlled so clean clones can bootstrap Maven
+!server-java/.mvn/wrapper/maven-wrapper.jar

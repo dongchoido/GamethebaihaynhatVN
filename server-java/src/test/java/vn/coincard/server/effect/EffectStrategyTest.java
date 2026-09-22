@@ -1,13 +1,14 @@
 package vn.coincard.server.effect;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 import vn.coincard.server.game.Minion;
 import vn.coincard.server.game.Player;
 import vn.coincard.server.game.Hero;
 import vn.coincard.server.game.Deck;
-import vn.coincard.server.game.CardTypes;
+import vn.coincard.server.game.HeroClass;
 import vn.coincard.server.game.effects.DamageEffect;
 import vn.coincard.server.game.effects.HealEffect;
 import vn.coincard.server.game.effects.AreaEffects;
@@ -21,7 +22,7 @@ import java.util.List;
 class EffectStrategyTest {
 
   private Player player(String id) {
-    Hero hero = new Hero("h", "Jaina", "MAGE", "Fireblast", 2, "img");
+    Hero hero = new Hero("h", "Jaina", HeroClass.MAGE, "Fireblast", 2, "img");
     return new Player(id, id, hero, new Deck(List.of()));
   }
 
@@ -43,7 +44,7 @@ class EffectStrategyTest {
     Player p2 = player("p2");
     p1.heroState().takeDamage(10);
     HealEffect effect = new HealEffect(5);
-    effect.execute(new EffectContext(p1, p2, p1, null));
+    effect.execute(new EffectContext(p1, p2, p1.heroState(), null));
     assertEquals(25, p1.heroState().currentHealth());
   }
 

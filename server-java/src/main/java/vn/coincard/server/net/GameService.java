@@ -1,386 +1,252 @@
 package vn.coincard.server.net;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.stereotype.Service;
-import vn.coincard.server.db.Repositories;
-import vn.coincard.server.db.Repositories.CatalogRepository;
-import vn.coincard.server.db.Repositories.GamePlayerInput;
-import vn.coincard.server.db.Repositories.GameRepository;
-import vn.coincard.server.game.CardTypes;
-import vn.coincard.server.game.Constants;
-import vn.coincard.server.game.Deck;
-import vn.coincard.server.game.EffectResolver;
+import vn.coincard.server.application.ActiveGameRegistry;
+import vn.coincard.server.application.CommandExecutionService;
+import vn.coincard.server.application.LoadoutService;
+import vn.coincard.server.application.MatchService;
+import vn.coincard.server.game.ErrorCode;
 import vn.coincard.server.game.Game;
-import vn.coincard.server.game.GameEngine;
+import vn.coincard.server.game.GameCommand;
 import vn.coincard.server.game.GameException;
-import vn.coincard.server.game.Hero;
-import vn.coincard.server.game.Player;
+import vn.coincard.server.game.GameSessionRegistry;
+import vn.coincard.server.game.HeroClass;
+import vn.coincard.server.mapper.GameStateMapper;
 import vn.coincard.server.room.Room;
 import vn.coincard.server.room.RoomManager;
 import vn.coincard.server.room.RoomPlayer;
+import vn.coincard.server.service.GamePersistenceService;
+import vn.coincard.server.service.RoomService;
+import vn.coincard.server.ws.SocketEvent;
 
-/** Coordinates authentication, rooms, state broadcasts and result persistence — SRP: gameplay. */
+/** WebSocket-facing facade; game rules and snapshots live in application/domain services. */
 @Service
-public class GameService {
-  private final GameEngine engine = new GameEngine();
-  private final Map<String, String> gameIndex = new ConcurrentHashMap<>(); // roomCode -> gameId
+public final class GameService {
+  private static final Logger log = LoggerFactory.getLogger(GameService.class);
+  private final RoomManager rooms;
+  private final RoomService roomService;
+  private final LoadoutService loadouts;
+  private final MatchService matches;
+  private final CommandExecutionService commandExecution;
+  private final ActiveGameRegistry activeGames;
+  private final GamePersistenceService persistence;
+  private final OutboundGameGateway outbound;
+  private final GameSessionRegistry sessions;
+  private final TaskExecutor taskExecutor;
 
-  private final RoomManager roomManager;
-  private final GameRepository gameRepository;
-  private final CatalogRepository catalog;
-  private final vn.coincard.server.service.GamePersistenceService persistence;
-  private final vn.coincard.server.service.RoomService roomService;
-  private MessageSender sender = new MessageSender() {
-    @Override public void toRoom(String r, String e, Object d) {}
-    @Override public void toSession(String s, String e, Object d) {}
-    @Override public void disconnectSession(String s) {}
-  };
-
-  public GameService(RoomManager roomManager, GameRepository gameRepository,
-      CatalogRepository catalog, vn.coincard.server.service.GamePersistenceService persistence,
-      vn.coincard.server.service.RoomService roomService) {
-    this.roomManager = roomManager;
-    this.gameRepository = gameRepository;
-    this.catalog = catalog;
-    this.persistence = persistence;
+  public GameService(RoomManager rooms, RoomService roomService, LoadoutService loadouts,
+      MatchService matches, CommandExecutionService commandExecution,
+      ActiveGameRegistry activeGames, GamePersistenceService persistence,
+      OutboundGameGateway outbound, GameSessionRegistry sessions,
+      @Qualifier("gameTaskExecutor") TaskExecutor taskExecutor) {
+    this.rooms = rooms;
     this.roomService = roomService;
+    this.loadouts = loadouts;
+    this.matches = matches;
+    this.commandExecution = commandExecution;
+    this.activeGames = activeGames;
+    this.persistence = persistence;
+    this.outbound = outbound;
+    this.sessions = sessions;
+    this.taskExecutor = taskExecutor;
   }
 
-  public void setSender(MessageSender sender) {
-    this.sender = sender;
-    this.roomService.setSender(sender);
-  }
-  public RoomManager rooms() { return roomManager; }
-
-  @jakarta.annotation.PostConstruct
-  public void startCleanup() {
-    ScheduledExecutorService timer = Executors.newSingleThreadScheduledExecutor(r -> {
-      Thread t = new Thread(r, "room-cleanup");
-      t.setDaemon(true);
-      return t;
-    });
-    timer.scheduleAtFixedRate(() -> {
-      try {
-        for (Room room : roomManager.listRooms()) {
-          if (!room.isIdle(Constants.ROOM_IDLE_TTL_MS)) continue;
-          String gameId = gameIndex.get(room.getRoomCode());
-          if (gameId != null) {
-            engine.removeGame(gameId);
-            gameIndex.remove(room.getRoomCode());
-            persistence.removeGame(gameId);
-          }
-          roomManager.deleteRoom(room.getRoomCode());
-        }
-      } catch (RuntimeException ignored) {
-        // Cleanup must never crash the server.
-      }
-    }, Constants.ROOM_SWEEP_INTERVAL_MS, Constants.ROOM_SWEEP_INTERVAL_MS, TimeUnit.MILLISECONDS);
-  }
-
-  // ---------- rooms — delegate sang RoomService để thể hiện SRP
-
-  public void createRoom(String socketId, Map<String, Object> session, String playerName) {
+  public void createRoom(String socketId, PlayerSession session, String playerName) {
     roomService.createRoom(socketId, session, playerName);
   }
 
-  public void joinRoom(String socketId, Map<String, Object> session, String roomCode, String playerName) {
+  public void joinRoom(String socketId, PlayerSession session, String roomCode, String playerName) {
     roomService.joinRoom(socketId, session, roomCode, playerName);
   }
 
-  public void selectDeck(String socketId, Map<String, Object> session, String heroId, String roomCode) {
-    Room room = roomManager.getRoom(roomCode);
-    synchronized (room) {
-      if (room.isStarted() || room.isStarting()) return;
-      RoomPlayer player = room.getPlayerBySession(tokenOf(session));
-      if (player == null || !socketId.equals(player.socketId)) {
-        throw new IllegalArgumentException("Player không tồn tại trong room.");
-      }
-      if (!List.of("MAGE", "HUNTER", "PALADIN", "PRIEST", "WARLOCK").contains(heroId)) {
-        throw new IllegalArgumentException("Hero không hợp lệ.");
-      }
-      room.selectHero(player.playerId, heroId);
-      if (room.isFull() && room.getPlayers().stream().allMatch(p -> p.ready) && room.tryStart()) {
-        CompletableFuture.runAsync(() -> startGame(room)).whenComplete((v, error) -> {
-          if (error != null) {
-            room.cancelStart();
-            room.clearReady();
-            System.err.println("Không thể khởi tạo trận: " + errorMessage(error));
-            sender.toRoom(room.getRoomCode(), "ACTION_REJECTED", Map.of(
-                "code", "GAME_START_FAILED",
-                "message", errorMessage(error)));
-          }
-        });
-      }
-    }
-  }
-
-  private void startGame(Room room) {
-    String gameId = UUID.randomUUID().toString();
-    List<Repositories.HeroRecord> heroes = catalog.heroes();
-    List<CardTypes.CardDefinition> cardCatalog = catalog.cards();
-    if (cardCatalog.size() < Constants.DECK_SIZE) {
-      throw new IllegalStateException("Catalog chưa đủ bài. Hãy kiểm tra seed.");
-    }
-    List<RoomPlayer> players = room.getPlayers();
-    if (players.size() < 2) throw new IllegalStateException("Room cần đủ 2 player để start.");
-    Game game = engine.createGame(gameId, room.getRoomCode(),
-        buildPlayerInit(players.get(0), heroes, cardCatalog),
-        buildPlayerInit(players.get(1), heroes, cardCatalog));
-    game.start();
-    room.markStarted();
-    gameIndex.put(room.getRoomCode(), gameId);
-    synchronized (game) {
-      sender.toRoom(room.getRoomCode(), "GAME_STARTED", Map.of("gameId", gameId));
-      broadcastState(room, game);
-    }
-  }
-
-  private GameEngine.PlayerInit buildPlayerInit(RoomPlayer roomPlayer,
-      List<Repositories.HeroRecord> heroes, List<CardTypes.CardDefinition> cardCatalog) {
-    if (heroes.isEmpty()) throw new IllegalStateException("Chưa seed heroes.");
-    Repositories.HeroRecord heroRecord = heroes.stream()
-        .filter(h -> h.id().equals(roomPlayer.heroClass) || h.heroClass().equals(roomPlayer.heroClass))
-        .findFirst().orElse(heroes.get(0));
-    List<CardTypes.CardDefinition> deckCards = cardCatalog.stream()
-        .sorted((a, b) -> Integer.compare(a.manaCost(), b.manaCost()))
-        .limit(Constants.DECK_SIZE)
-        .map(c -> new CardTypes.CardDefinition(
-            c.id() + "-" + UUID.randomUUID(), c.name(), c.slug(), c.description(),
-            c.type(), c.rarity(), c.manaCost(), c.attack(), c.health(), c.heroClass(),
-            c.imagePath(), c.effects(), c.keywords(), true))
-        .collect(Collectors.toList());
-    Hero hero = new Hero(heroRecord.id(), heroRecord.name(), heroRecord.heroClass(),
-        heroRecord.powerName(), heroRecord.powerCost(), heroRecord.imagePath());
-    return new GameEngine.PlayerInit(roomPlayer.playerId, roomPlayer.name, hero, new Deck(deckCards));
-  }
-
-  // ---------- actions ----------
-
-  public void playCard(String socketId, Map<String, Object> session,
-      String gameId, String cardInstanceId, String targetId) {
-    executeAction(socketId, session, gameId,
-        playerId -> engine.playCard(gameId, playerId, cardInstanceId, targetId));
-  }
-
-  public void attack(String socketId, Map<String, Object> session,
-      String gameId, String attackerId, String targetId) {
-    executeAction(socketId, session, gameId,
-        playerId -> engine.attack(gameId, playerId, attackerId, targetId));
-  }
-
-  public void endTurn(String socketId, Map<String, Object> session, String gameId) {
-    executeAction(socketId, session, gameId, playerId -> engine.endTurn(gameId, playerId));
-  }
-
-  public void useHeroPower(String socketId, Map<String, Object> session, String gameId) {
-    executeAction(socketId, session, gameId, playerId -> engine.useHeroPower(gameId, playerId));
-  }
-
-  public void drawCard(String socketId, Map<String, Object> session, String gameId) {
-    executeAction(socketId, session, gameId, playerId -> engine.drawCard(gameId, playerId));
-  }
-
-  public void concede(String socketId, Map<String, Object> session, String gameId) {
-    executeAction(socketId, session, gameId, playerId -> engine.concede(gameId, playerId));
-  }
-
-  private void executeAction(String socketId, Map<String, Object> session, String gameId,
-      GameAction action) {
-    Game game = engine.getGame(gameId);
-    Room room = roomManager.getRoom(game.getRoomCode());
-    room.touch();
-    synchronized (game) {
-      try {
-        action.run(playerIdFromGame(game, socketId, session));
-      } catch (RuntimeException error) {
-        respondWithError(socketId, error);
-        return;
-      }
-      broadcastState(room, game);
-    }
-  }
-
-  @FunctionalInterface
-  private interface GameAction {
-    void run(String playerId);
-  }
-
-  public void handleDisconnect(String socketId) {
-    Room room = roomManager.findRoomBySocketId(socketId);
-    roomManager.unindexSocket(socketId);
-    if (room == null) return;
-    RoomPlayer leftPlayer = room.removeSocket(socketId);
-    if (leftPlayer == null) return;
-    Map<String, Object> data = new LinkedHashMap<>();
-    data.put("playerId", leftPlayer.playerId);
-    sender.toRoom(room.getRoomCode(), "PLAYER_DISCONNECTED", data);
-  }
-
-  public void reconnect(String socketId, Map<String, Object> session, String sessionToken) {
-    Room existing = roomManager.findRoomBySocketId(socketId);
-    if (existing != null) {
-      boolean mine = existing.getPlayers().stream()
-          .anyMatch(p -> socketId.equals(p.socketId) && sessionToken.equals(p.sessionToken));
-      if (!mine) throw new GameException.ReconnectFailed();
-    }
-    Room room = roomManager.findRoomBySessionToken(sessionToken);
-    if (room == null) throw new GameException.ReconnectFailed();
-    RoomPlayer player = room.getPlayerBySession(sessionToken);
-    if (player == null) throw new GameException.ReconnectFailed();
-    if (player.socketId != null && !player.socketId.equals(socketId)) {
-      roomManager.unindexSocket(player.socketId);
-      sender.disconnectSession(player.socketId);
-    }
-    room.bindSocket(player.playerId, socketId);
-    session.put("sessionToken", sessionToken);
-    roomManager.indexPlayer(room, room.getPlayerBySession(sessionToken));
-    room.touch();
-    Map<String, Object> data = new LinkedHashMap<>();
-    data.put("roomCode", room.getRoomCode());
-    data.put("players", roomSnapshot(room));
-    sender.toRoom(room.getRoomCode(), "PLAYER_JOINED", data);
-
-    String gameId = gameIndex.get(room.getRoomCode());
-    if (gameId != null) {
-      Game game = engine.getGame(gameId);
-      synchronized (game) {
-        sender.toSession(socketId, "GAME_STATE_UPDATED",
-            Map.of("gameState", toStateFor(game, player.playerId)));
-      }
-    }
-  }
-
-  public void rematch(String socketId, Map<String, Object> session, String gameId) {
-    Game game = engine.getGame(gameId);
-    if (!game.isFinished()) {
-      sender.toSession(socketId, "ACTION_REJECTED", Map.of(
-          "code", "REMATCH_NOT_ALLOWED",
-          "message", "Trận chưa kết thúc, không thể tái đấu."));
-      return;
-    }
-    Room room = roomManager.getRoom(game.getRoomCode());
-    if (room.isStarting()) {
-      sender.toSession(socketId, "ACTION_REJECTED", Map.of(
-          "code", "REMATCH_IN_PROGRESS",
-          "message", "Đang tạo trận tái đấu, vui lòng đợi."));
-      return;
-    }
-    String playerId = playerIdFromGame(game, socketId, session);
-    int votes = room.voteRematch(playerId);
-    if (votes < 2) return;
-    if (!room.tryStartRematch()) {
-      sender.toSession(socketId, "ACTION_REJECTED", Map.of(
-          "code", "REMATCH_IN_PROGRESS",
-          "message", "Đang tạo trận tái đấu, vui lòng đợi."));
-      return;
-    }
-    String oldGameId = game.getGameId();
-    CompletableFuture.runAsync(() -> startGame(room)).whenComplete((v, error) -> {
-      if (error == null) {
-        engine.removeGame(oldGameId);
-        persistence.removeGame(oldGameId);
-      } else {
-        room.cancelStart();
-        sender.toRoom(room.getRoomCode(), "ACTION_REJECTED", Map.of(
-            "code", "REMATCH_FAILED",
-            "message", errorMessage(error)));
-      }
+  public void submitLoadout(String socketId, PlayerSession session, HeroClass heroClass,
+      String roomCode, List<String> cardSlugs) {
+    LoadoutService.Outcome outcome = loadouts.submit(socketId, session, heroClass, roomCode, cardSlugs);
+    if (!outcome.shouldStart()) return;
+    CompletableFuture.runAsync(() -> startGame(outcome.room()), taskExecutor).whenComplete((ignored, error) -> {
+      if (error == null) return;
+      outcome.room().cancelStart();
+      outcome.room().clearReady();
+      log.error("Không thể khởi tạo trận", error);
+      outbound.toRoom(outcome.room().getRoomCode(), SocketEvent.ACTION_REJECTED,
+          new GameEvents.ActionRejected(ErrorCode.GAME_START_FAILED, startFailureMessage()));
     });
   }
 
-  // ---------- state ----------
-
-  private List<Map<String, Object>> roomSnapshot(Room room) {
-    return vn.coincard.server.mapper.GameStateMapper.toRoomSnapshot(room);
+  private void startGame(Room room) {
+    MatchService.StartedMatch match = matches.start(room);
+    outbound.toRoom(room.getRoomCode(), SocketEvent.GAME_STARTED, new GameEvents.GameStarted(match.gameId()));
+    publishViewers(match.viewers());
   }
 
-  Map<String, Object> toStateFor(Game game, String viewerPlayerId) {
-    return vn.coincard.server.mapper.GameStateMapper.toGameStateFor(game, viewerPlayerId);
+  public void playCard(String socketId, PlayerSession session, String gameId,
+      String cardInstanceId, String targetId) {
+    executeAction(socketId, session, gameId,
+        playerId -> new GameCommand.PlayCard(gameId, playerId, cardInstanceId, targetId));
   }
 
-  private Map<String, Object> playerToState(Player player, boolean isOwner) {
-    return vn.coincard.server.mapper.GameStateMapper.toPlayerState(player, isOwner);
+  public void attack(String socketId, PlayerSession session, String gameId, String attackerId,
+      String targetId) {
+    executeAction(socketId, session, gameId,
+        playerId -> new GameCommand.Attack(gameId, playerId, attackerId, targetId));
   }
 
-  private void broadcastState(Room room, Game game) {
-    for (RoomPlayer rp : room.getPlayers()) {
-      if (rp.socketId == null) continue;
-      Map<String, Object> data = new LinkedHashMap<>();
-      data.put("gameState", toStateFor(game, rp.playerId));
-      sender.toSession(rp.socketId, "GAME_STATE_UPDATED", data);
+  public void endTurn(String socketId, PlayerSession session, String gameId) {
+    executeAction(socketId, session, gameId, playerId -> new GameCommand.EndTurn(gameId, playerId));
+  }
+
+  public void useHeroPower(String socketId, PlayerSession session, String gameId) {
+    executeAction(socketId, session, gameId,
+        playerId -> new GameCommand.UseHeroPower(gameId, playerId));
+  }
+
+  public void concede(String socketId, PlayerSession session, String gameId) {
+    executeAction(socketId, session, gameId, playerId -> new GameCommand.Concede(gameId, playerId));
+  }
+
+  private void executeAction(String socketId, PlayerSession session, String gameId,
+      CommandFactory commandFactory) {
+    try {
+      Room room = roomForGame(gameId);
+      room.touch();
+      String playerId = playerIdFromGame(gameId, room, socketId, session);
+      CommandExecutionService.CommandResult result = commandExecution.execute(
+          commandFactory.create(playerId), room);
+      publishCommandResult(room, result);
+    } catch (RuntimeException error) {
+      respondWithError(socketId, error);
     }
-    if (game.isFinished()) {
-      if (persistence.shouldSave(game.getGameId())) {
-        persistence.saveGame(game, room, gameIdForRoom(room.getRoomCode()), 0);
+  }
+
+  public void handleDisconnect(String socketId) {
+    Room room = rooms.findRoomBySocketId(socketId);
+    rooms.unindexSocket(socketId);
+    if (room == null) return;
+    RoomPlayer leftPlayer = room.removeSocket(socketId);
+    if (leftPlayer == null) return;
+    outbound.toRoom(room.getRoomCode(), SocketEvent.PLAYER_DISCONNECTED,
+        new GameEvents.PlayerDisconnected(leftPlayer.playerId()));
+  }
+
+  public void reconnect(String socketId, PlayerSession session, String sessionToken) {
+    Room existing = rooms.findRoomBySocketId(socketId);
+    if (existing != null) {
+      boolean mine = existing.getPlayers().stream().anyMatch(player -> socketId.equals(player.socketId())
+          && sessionToken.equals(player.sessionToken()));
+      if (!mine) throw new GameException.ReconnectFailed();
+    }
+    Room room = rooms.findRoomBySessionToken(sessionToken);
+    if (room == null) throw new GameException.ReconnectFailed();
+    RoomPlayer player = room.getPlayerBySession(sessionToken);
+    if (player == null) throw new GameException.ReconnectFailed();
+    if (player.socketId() != null && !player.socketId().equals(socketId)) {
+      rooms.unindexSocket(player.socketId());
+      outbound.disconnectSession(player.socketId());
+    }
+    room.bindSocket(player.playerId(), socketId);
+    session.bindSessionToken(sessionToken);
+    rooms.indexPlayer(room, room.getPlayerBySession(sessionToken));
+    room.touch();
+    outbound.toRoom(room.getRoomCode(), SocketEvent.PLAYER_JOINED, new GameEvents.PlayerJoined(
+        room.getRoomCode(), null, null, GameStateMapper.toRoomSnapshot(room)));
+
+    String gameId = activeGames.gameIdForRoom(room.getRoomCode());
+    if (gameId == null) return;
+    outbound.toSession(socketId, SocketEvent.GAME_STATE_UPDATED,
+        new GameEvents.GameStateUpdated(commandExecution.stateFor(gameId, player.playerId())));
+  }
+
+  public void rematch(String socketId, PlayerSession session, String gameId) {
+    Room room = roomForGame(gameId);
+    if (!commandExecution.isFinished(gameId)) {
+      reject(socketId, ErrorCode.REMATCH_NOT_ALLOWED, "Trận chưa kết thúc, không thể tái đấu.");
+      return;
+    }
+    if (room.isStarting()) {
+      reject(socketId, ErrorCode.REMATCH_IN_PROGRESS, "Đang tạo trận tái đấu, vui lòng đợi.");
+      return;
+    }
+    String playerId = playerIdFromGame(gameId, room, socketId, session);
+    if (room.voteRematch(playerId) < 2) return;
+    if (!room.tryStartRematch()) {
+      reject(socketId, ErrorCode.REMATCH_IN_PROGRESS, "Đang tạo trận tái đấu, vui lòng đợi.");
+      return;
+    }
+    String oldGameId = gameId;
+    CompletableFuture.runAsync(() -> startGame(room), taskExecutor).whenComplete((ignored, error) -> {
+      if (error == null) {
+        sessions.remove(oldGameId);
+        persistence.removeGame(oldGameId);
+        return;
       }
-      if (persistence.shouldEmitGameOver(game.getGameId())) {
-        persistence.markGameOverEmitted(game.getGameId());
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("winnerId", game.getWinnerId());
-        sender.toRoom(room.getRoomCode(), "GAME_OVER", data);
-      }
+      room.cancelStart();
+      log.error("Không thể tạo trận tái đấu", error);
+      outbound.toRoom(room.getRoomCode(), SocketEvent.ACTION_REJECTED,
+          new GameEvents.ActionRejected(ErrorCode.REMATCH_FAILED, startFailureMessage()));
+    });
+  }
+
+  private void publishViewers(List<MatchService.ViewerState> viewers) {
+    for (MatchService.ViewerState viewer : viewers) {
+      outbound.toSession(viewer.socketId(), SocketEvent.GAME_STATE_UPDATED,
+          new GameEvents.GameStateUpdated(viewer.state()));
     }
   }
 
-  private void saveGame(Game game, Room room, int attempt) {
-    persistence.saveGame(game, room, gameIdForRoom(room.getRoomCode()), attempt);
-  }
-
-  private String gameIdForRoom(String roomCode) {
-    return gameIndex.get(roomCode);
-  }
-
-  private String tokenOf(Map<String, Object> session) {
-    Object token = session.get("sessionToken");
-    return token instanceof String s ? s : "";
-  }
-
-  private String playerIdFromGame(Game game, String socketId, Map<String, Object> session) {
-    Room room = roomManager.getRoom(game.getRoomCode());
-    String current = gameIndex.get(room.getRoomCode());
-    if (current == null || !current.equals(game.getGameId())) {
-      throw new IllegalArgumentException("Trận này không còn hoạt động.");
+  private void publishCommandResult(Room room, CommandExecutionService.CommandResult result) {
+    publishViewers(result.viewers());
+    GamePersistenceService.FinishedGame finishedGame = result.finishedGame();
+    if (finishedGame == null) return;
+    persistence.saveGame(finishedGame, activeGames.gameIdForRoom(room.getRoomCode()), 0);
+    if (persistence.shouldEmitGameOver(finishedGame.gameId())) {
+      persistence.markGameOverEmitted(finishedGame.gameId());
+      outbound.toRoom(room.getRoomCode(), SocketEvent.GAME_OVER,
+          new GameEvents.GameOver(result.winnerId()));
     }
-    RoomPlayer roomPlayer = room.getPlayerBySession(tokenOf(session));
-    if (roomPlayer == null || !socketId.equals(roomPlayer.socketId)) {
-      throw new IllegalArgumentException("Player không tồn tại trong room.");
+  }
+
+  private Room roomForGame(String gameId) {
+    String roomCode = sessions.withLockedGame(gameId, Game::getRoomCode);
+    return rooms.getRoom(roomCode);
+  }
+
+  private String playerIdFromGame(String gameId, Room room, String socketId, PlayerSession session) {
+    if (!activeGames.isCurrent(room.getRoomCode(), gameId)) {
+      throw new GameException.GameNotRunning();
     }
-    return roomPlayer.playerId;
+    RoomPlayer roomPlayer = room.getPlayerBySession(session.sessionToken());
+    if (roomPlayer == null || !socketId.equals(roomPlayer.socketId())) {
+      throw new GameException.InvalidPayload("Player không tồn tại trong room.");
+    }
+    return roomPlayer.playerId();
   }
 
   private void respondWithError(String socketId, RuntimeException error) {
-    Map<String, Object> data = new LinkedHashMap<>();
-    if (error instanceof GameException ge) {
-      data.put("code", ge.code());
-      data.put("message", ge.getMessage());
-    } else {
-      data.put("code", "UNKNOWN");
-      data.put("message", error.getMessage() != null ? error.getMessage() : "Unknown error.");
+    if (error instanceof GameException gameError) {
+      reject(socketId, gameError.errorCode(), gameError.getMessage());
+      return;
     }
-    sender.toSession(socketId, "ACTION_REJECTED", data);
+    log.warn("Command thất bại cho session {}", socketId, error);
+    reject(socketId, ErrorCode.INTERNAL_ERROR, "Server không thể xử lý yêu cầu này.");
   }
 
-  private String errorMessage(Throwable error) {
-    Throwable cause = error.getCause() != null ? error.getCause() : error;
-    return cause.getMessage() != null ? cause.getMessage() : "Không thể khởi tạo trận.";
+  private void reject(String socketId, ErrorCode code, String message) {
+    outbound.toSession(socketId, SocketEvent.ACTION_REJECTED,
+        new GameEvents.ActionRejected(code, message));
   }
 
-  private void broadcastExcept(Room room, String exceptSocketId, String event, Object data) {
-    for (RoomPlayer p : room.getPlayers()) {
-      if (p.socketId != null && !p.socketId.equals(exceptSocketId)) {
-        sender.toSession(p.socketId, event, data);
-      }
-    }
+  private String startFailureMessage() {
+    return "Không thể khởi tạo trận. Vui lòng thử lại.";
+  }
+
+  @FunctionalInterface
+  private interface CommandFactory {
+    GameCommand create(String playerId);
   }
 }

@@ -1,43 +1,65 @@
 package vn.coincard.server.game;
 
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Random;
 import java.util.function.Function;
 import vn.coincard.server.game.effects.BuffEffects;
 import vn.coincard.server.game.effects.DamageEffect;
 import vn.coincard.server.game.effects.HealEffect;
 import vn.coincard.server.game.effects.AreaEffects;
 import vn.coincard.server.game.effects.EffectContext;
-import vn.coincard.server.game.effects.ICardEffect;
+import vn.coincard.server.game.effects.EffectStrategy;
+import vn.coincard.server.game.effects.CardEffect;
+import vn.coincard.server.game.effects.EffectFactory;
 
 /** Card-effect strategy registry with fail-closed target validation. */
 public class EffectResolver {
-  private final Random random = new Random();
+  private final RandomSource randomSource;
 
-  private final Map<String, Function<CardTypes.EffectDefinition, ICardEffect>> strategies = Map.of(
-      "DAMAGE", e -> new DamageEffect(e.value()),
-      "HEAL", e -> new HealEffect(e.value()),
-      "BUFF_ATTACK", e -> new BuffEffects.BuffAttackEffect(e.value()),
-      "BUFF_HEALTH", e -> new BuffEffects.BuffHealthEffect(e.value()),
-      "MULTIPLY_HEALTH", e -> new AreaEffects.MultiplyHealthEffect(),
-      "AOE_DAMAGE", e -> new AreaEffects.AoeDamageEffect(e.value()),
-      "TRANSFORM", e -> new AreaEffects.TransformEffect(),
-      "DESTROY", e -> new AreaEffects.DestroyEffect(e.minAttack() != null ? e.minAttack() : 0),
-      "DESTROY_ALL", e -> new AreaEffects.TwistingNetherEffect());
+  private final EffectFactory effectFactory;
+
+  public EffectResolver() {
+    this(RandomSource.threadLocal());
+  }
+
+  public EffectResolver(RandomSource randomSource) {
+    this(List.of(
+        new Strategy(EffectType.DAMAGE, e -> new DamageEffect(e.value())),
+        new Strategy(EffectType.HEAL, e -> new HealEffect(e.value())),
+        new Strategy(EffectType.BUFF_ATTACK, e -> new BuffEffects.BuffAttackEffect(e.value())),
+        new Strategy(EffectType.BUFF_HEALTH, e -> new BuffEffects.BuffHealthEffect(e.value())),
+        new Strategy(EffectType.MULTIPLY_HEALTH, e -> new AreaEffects.MultiplyHealthEffect()),
+        new Strategy(EffectType.AOE_DAMAGE, e -> new AreaEffects.AoeDamageEffect(e.value())),
+        new Strategy(EffectType.TRANSFORM, e -> new AreaEffects.TransformEffect()),
+        new Strategy(EffectType.DESTROY, e -> new AreaEffects.DestroyEffect(
+            e.minAttack() != null ? e.minAttack() : 0)),
+        new Strategy(EffectType.DESTROY_ALL, e -> new AreaEffects.TwistingNetherEffect()),
+        new Strategy(EffectType.TEMPORARY_MANA,
+            e -> context -> context.player.gainTemporaryMana(e.value()))),
+        randomSource);
+  }
+
+  /** Constructor injection makes adding a strategy an extension, not a resolver edit. */
+  public EffectResolver(List<EffectStrategy> strategies) {
+    this(strategies, RandomSource.threadLocal());
+  }
+
+  public EffectResolver(List<EffectStrategy> strategies, RandomSource randomSource) {
+    this.effectFactory = new EffectFactory(strategies);
+    this.randomSource = randomSource;
+  }
+
+  private record Strategy(EffectType supportedType,
+      Function<CardTypes.EffectDefinition, CardEffect> factory) implements EffectStrategy {
+    @Override public Function<CardTypes.EffectDefinition, CardEffect> create() { return factory; }
+  }
 
   public void validate(Player player, Player opponent,
       CardTypes.EffectDefinition effect, String targetId) {
     buildStrategy(effect);
     if (effect.value() < 0) throw new GameException.InvalidTarget("Giá trị effect không hợp lệ.");
-    Object target = pickTarget(player, opponent, effect, targetId);
-    if (List.of("TRANSFORM", "DESTROY", "BUFF_ATTACK", "BUFF_HEALTH", "MULTIPLY_HEALTH")
-        .contains(effect.type()) && target instanceof Player) {
-      throw new GameException.InvalidTarget("Effect yêu cầu minion.");
-    }
-    if ("DESTROY".equals(effect.type()) && target instanceof Minion m
+    var target = pickTarget(player, opponent, effect, targetId);
+    if (effect.type() == EffectType.DESTROY && target instanceof Minion m
         && m.currentAttack() < (effect.minAttack() != null ? effect.minAttack() : 0)) {
       throw new GameException.InvalidTarget("Công mục tiêu thấp hơn điều kiện của lá bài.");
     }
@@ -45,18 +67,18 @@ public class EffectResolver {
 
   public void resolve(Player player, Player opponent,
       CardTypes.EffectDefinition effect, String targetId) {
-    if ("RANDOM_ENEMY".equals(effect.target())) {
+    if (effect.target() == EffectTarget.RANDOM_ENEMY) {
       resolveRandomEnemies(player, opponent, effect);
       return;
     }
-    Object target = pickTarget(player, opponent, effect, targetId);
+    var target = pickTarget(player, opponent, effect, targetId);
     List<Minion> areaTargets = null;
-    if ("ALL_MINIONS".equals(effect.target())) {
+    if (effect.target() == EffectTarget.ALL_MINIONS) {
       areaTargets = new ArrayList<>(player.getBoard());
       areaTargets.addAll(opponent.getBoard());
-    } else if ("ALL_ENEMY_MINIONS".equals(effect.target())) {
+    } else if (effect.target() == EffectTarget.ALL_ENEMY_MINIONS) {
       areaTargets = new ArrayList<>(opponent.getBoard());
-    } else if ("ALL_FRIENDLY_MINIONS".equals(effect.target())) {
+    } else if (effect.target() == EffectTarget.ALL_FRIENDLY_MINIONS) {
       areaTargets = new ArrayList<>(player.getBoard());
     }
     buildStrategy(effect).execute(new EffectContext(player, opponent, target, areaTargets));
@@ -64,23 +86,22 @@ public class EffectResolver {
 
   private void resolveRandomEnemies(Player player, Player opponent,
       CardTypes.EffectDefinition effect) {
-    List<Object> pool = new ArrayList<>(opponent.getBoard());
-    pool.add(opponent);
+    List<vn.coincard.server.model.GameCharacter> pool = new ArrayList<>(opponent.getBoard());
+    pool.add(opponent.heroState());
     int pickCount = Math.min(effect.count() != null ? effect.count() : 2, pool.size());
-    ICardEffect strategy = buildStrategy(effect);
+    CardEffect strategy = buildStrategy(effect);
     for (int i = 0; i < pickCount; i++) {
-      Object picked = pool.remove(random.nextInt(pool.size()));
+      vn.coincard.server.model.GameCharacter picked = pool.remove(randomSource.nextInt(pool.size()));
       strategy.execute(new EffectContext(player, opponent, picked, null));
     }
   }
 
-  private Object pickTarget(Player player, Player opponent,
+  private vn.coincard.server.model.GameCharacter pickTarget(Player player, Player opponent,
       CardTypes.EffectDefinition effect, String targetId) {
-    List<Object> candidates = new ArrayList<>(validTargets(player, opponent, effect));
+    List<vn.coincard.server.model.GameCharacter> candidates =
+        new ArrayList<>(validTargets(player, opponent, effect));
     if (targetId != null) {
-      return candidates.stream().filter(t ->
-          (t instanceof Minion m && m.getInstanceId().equals(targetId))
-              || (t instanceof Player p && p.id().equals(targetId)))
+      return candidates.stream().filter(t -> targetId.equals(characterId(t, player, opponent)))
           .findFirst()
           .orElseThrow(() -> new GameException.InvalidTarget("Target không thuộc danh sách hợp lệ."));
     }
@@ -94,38 +115,38 @@ public class EffectResolver {
     throw new GameException.InvalidTarget("Cần chỉ định target.");
   }
 
-  private List<Object> validTargets(Player player, Player opponent, CardTypes.EffectDefinition effect) {
-    List<Object> out = new ArrayList<>();
+  private List<vn.coincard.server.model.GameCharacter> validTargets(
+      Player player, Player opponent, CardTypes.EffectDefinition effect) {
+    List<vn.coincard.server.model.GameCharacter> out = new ArrayList<>();
     switch (effect.target()) {
-      case "ENEMY_HERO" -> out.add(opponent);
-      case "FRIENDLY_HERO" -> out.add(player);
-      case "ENEMY_CHARACTER" -> { out.addAll(opponent.getBoard()); out.add(opponent); }
-      case "ANY_CHARACTER" -> {
+      case ENEMY_HERO -> out.add(opponent.heroState());
+      case FRIENDLY_HERO -> out.add(player.heroState());
+      case ENEMY_CHARACTER -> { out.addAll(opponent.getBoard()); out.add(opponent.heroState()); }
+      case FRIENDLY_CHARACTER -> { out.addAll(player.getBoard()); out.add(player.heroState()); }
+      case ANY_CHARACTER -> {
         out.addAll(player.getBoard()); out.addAll(opponent.getBoard());
-        out.add(player); out.add(opponent);
+        out.add(player.heroState()); out.add(opponent.heroState());
       }
-      case "ENEMY_MINION" -> out.addAll(opponent.getBoard());
-      case "FRIENDLY_MINION" -> out.addAll(player.getBoard());
-      case "ANY_MINION" -> { out.addAll(player.getBoard()); out.addAll(opponent.getBoard()); }
-      case "SELF" -> out.add(player);
-      case "RANDOM_ENEMY", "ALL_MINIONS", "ALL_ENEMY_MINIONS", "ALL_FRIENDLY_MINIONS" -> { }
+      case ENEMY_MINION -> out.addAll(opponent.getBoard());
+      case FRIENDLY_MINION -> out.addAll(player.getBoard());
+      case ANY_MINION -> { out.addAll(player.getBoard()); out.addAll(opponent.getBoard()); }
+      case SELF -> out.add(player.heroState());
+      case RANDOM_ENEMY, ALL_MINIONS, ALL_ENEMY_MINIONS, ALL_FRIENDLY_MINIONS -> { }
       default -> throw new GameException.InvalidTarget("Target chưa hỗ trợ: " + effect.target() + ".");
     }
     return out;
   }
 
-  private ICardEffect buildStrategy(CardTypes.EffectDefinition effect) {
-    Function<CardTypes.EffectDefinition, ICardEffect> factory = strategies.get(effect.type());
-    if (factory == null) throw new GameException.InvalidTarget("Effect chưa hỗ trợ: " + effect.type() + ".");
-    return factory.apply(effect);
+  private CardEffect buildStrategy(CardTypes.EffectDefinition effect) {
+    return effectFactory.create(effect);
   }
 
-  /** Delegates to mapper — giữ API cũ cho tương thích. */
-  public static Map<String, Object> minionToState(Minion m) {
-    return vn.coincard.server.mapper.GameStateMapper.toMinionState(m);
+  private String characterId(vn.coincard.server.model.GameCharacter character, Player player,
+      Player opponent) {
+    if (character instanceof Minion minion) return minion.getInstanceId();
+    if (character == player.heroState()) return player.id();
+    if (character == opponent.heroState()) return opponent.id();
+    return "";
   }
 
-  public static Map<String, Object> heroToState(Hero h) {
-    return vn.coincard.server.mapper.GameStateMapper.toHeroState(h);
-  }
 }

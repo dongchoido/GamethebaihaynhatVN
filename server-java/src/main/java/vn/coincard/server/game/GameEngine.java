@@ -1,57 +1,75 @@
 package vn.coincard.server.game;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
-/** Authoritative validator and executor for game actions. */
-public class GameEngine {
-  private final Map<String, Game> games = new ConcurrentHashMap<>();
-  private final EffectResolver resolver = new EffectResolver();
+/** Stateless domain service that validates and applies one command to one aggregate. */
+public final class GameEngine {
+  private final EffectResolver resolver;
+  private final HeroPowerRegistry heroPowerRegistry;
 
-  public Game createGame(String gameId, String roomCode, PlayerInit p1, PlayerInit p2) {
-    Game game = new Game(gameId, roomCode,
-        new Player(p1.playerId(), p1.name(), p1.hero(), p1.deck()),
-        new Player(p2.playerId(), p2.name(), p2.hero(), p2.deck()));
-    games.put(gameId, game);
-    return game;
+  public GameEngine() {
+    this(new EffectResolver(), new HeroPowerRegistry(HeroPower.defaults()));
   }
 
-  public record PlayerInit(String playerId, String name, Hero hero, Deck deck) {}
+  public GameEngine(EffectResolver resolver, HeroPowerRegistry heroPowerRegistry) {
+    this.resolver = resolver;
+    this.heroPowerRegistry = heroPowerRegistry;
+  }
 
-  public void playCard(String gameId, String playerId, String cardInstanceId, String targetId) {
-    Game game = ensurePlaying(gameId);
+  /** Starts a waiting aggregate; session ownership remains with the application layer. */
+  public void start(Game game, String firstPlayerId) {
+    game.start(firstPlayerId);
+  }
+
+  void execute(Game game, GameCommand command) {
+    if (!game.getGameId().equals(command.gameId())) {
+      throw new GameException.InvalidCommand("Command không thuộc trận hiện tại.");
+    }
+    ensurePlaying(game);
+    if (command instanceof GameCommand.PlayCard playCard) {
+      playCard(game, playCard.playerId(), playCard.cardInstanceId(), playCard.targetId());
+    } else if (command instanceof GameCommand.Attack attack) {
+      attack(game, attack.playerId(), attack.attackerId(), attack.targetId());
+    } else if (command instanceof GameCommand.UseHeroPower useHeroPower) {
+      useHeroPower(game, useHeroPower.playerId());
+    } else if (command instanceof GameCommand.EndTurn endTurn) {
+      endTurn(game, endTurn.playerId());
+    } else if (command instanceof GameCommand.Concede concede) {
+      concede(game, concede.playerId());
+    } else {
+      throw new GameException.InvalidCommand("Command chưa được hỗ trợ.");
+    }
+  }
+
+  void playCard(Game game, String playerId, String cardInstanceId, String targetId) {
     assertActivePlayer(game, playerId);
     Player player = game.getPlayerById(playerId);
     Player opponent = game.getOpponent();
 
-    // PHASE 1: VALIDATE — no mutation.
     CardTypes.CardDefinition card = player.findCardInHand(cardInstanceId);
     if (card == null) throw new GameException.CardNotInHand();
     if (card.manaCost() > player.currentMana()) throw new GameException.NotEnoughMana();
-    if ("MINION".equals(card.type()) && player.boardCount() >= Constants.MAX_BOARD_SIZE) {
+    if (card.type() == CardType.MINION && player.boardCount() >= Constants.MAX_BOARD_SIZE) {
       throw new GameException.BoardFull();
     }
-    if (!"MINION".equals(card.type())) {
+    if (card.type() != CardType.MINION) {
       for (CardTypes.EffectDefinition effect : card.effects()) {
         resolver.validate(player, opponent, effect, targetForEffect(effect, targetId));
       }
     }
 
-    List<Runnable> undo = List.of(player.checkpoint(), opponent.checkpoint());
+    GameMemento memento = GameMemento.capture(game);
     try {
-      // PHASE 2: COMMIT.
       player.removeFromHand(cardInstanceId);
       player.spendMana(card.manaCost());
       player.recordCardPlayed();
 
-      if ("MINION".equals(card.type())) {
+      if (card.type() == CardType.MINION) {
         player.summonMinion(new Minion(UUID.randomUUID().toString(),
             card.id(), card.name(), card.attack(), card.health(), player.id(),
-            card.keywords().contains("CHARGE"), card.imagePath(),
-            card.keywords().contains("TAUNT")));
+            card.keywords().contains(Keyword.CHARGE), card.imagePath(),
+            card.keywords().contains(Keyword.TAUNT)));
       } else {
         for (CardTypes.EffectDefinition effect : card.effects()) {
           resolver.resolve(player, opponent, effect, targetForEffect(effect, targetId));
@@ -61,13 +79,12 @@ public class GameEngine {
       }
       checkWinner(game);
     } catch (RuntimeException error) {
-      undo.forEach(Runnable::run);
+      memento.restore();
       throw error;
     }
   }
 
-  public void attack(String gameId, String playerId, String attackerId, String targetId) {
-    Game game = ensurePlaying(gameId);
+  void attack(Game game, String playerId, String attackerId, String targetId) {
     Player player = game.getPlayerById(playerId);
     Player opponent = game.getOpponent();
     assertActivePlayer(game, playerId);
@@ -77,62 +94,37 @@ public class GameEngine {
     checkWinner(game);
   }
 
-  public void endTurn(String gameId, String playerId) {
-    Game game = ensurePlaying(gameId);
+  void endTurn(Game game, String playerId) {
     assertActivePlayer(game, playerId);
     game.switchTurn();
+    checkWinner(game);
   }
 
-  public void drawCard(String gameId, String playerId) {
-    Game game = ensurePlaying(gameId);
-    assertActivePlayer(game, playerId);
-    Player player = game.getPlayerById(playerId);
-    if (player.handCount() >= Constants.MAX_HAND_SIZE) throw new GameException.HandFull();
-    if (player.deckSize() <= 0) throw new GameException.DeckEmpty();
-    if (game.hasManualDrawnThisTurn()) throw new GameException.AlreadyDrew();
-    player.addToHand(player.drawCard());
-    game.markManualDraw();
-  }
-
-  public void useHeroPower(String gameId, String playerId) {
-    Game game = ensurePlaying(gameId);
+  void useHeroPower(Game game, String playerId) {
     Player player = game.getPlayerById(playerId);
     Hero hero = player.heroState();
     assertActivePlayer(game, playerId);
     if (player.currentMana() < hero.getPowerCost()) throw new GameException.NotEnoughMana();
-    HeroPower power = HeroPower.forClass(hero.getHeroClass());
+    HeroPower power = heroPowerRegistry.forClass(hero.getHeroClass());
     power.validate(player);
-    List<Runnable> undo = new ArrayList<>();
-    for (Player p : game.getPlayers()) undo.add(p.checkpoint());
+    GameMemento memento = GameMemento.capture(game);
     try {
+      player.markHeroPowerUsed();
       player.spendMana(hero.getPowerCost());
       power.execute(game, player);
       checkWinner(game);
     } catch (RuntimeException error) {
-      undo.forEach(Runnable::run);
+      memento.restore();
       throw error;
     }
   }
 
-  public void concede(String gameId, String playerId) {
-    Game game = ensurePlaying(gameId);
+  void concede(Game game, String playerId) {
     game.resign(playerId);
   }
 
-  public Game getGame(String gameId) {
-    Game game = games.get(gameId);
-    if (game == null) throw new IllegalArgumentException("Game không tồn tại.");
-    return game;
-  }
-
-  public void removeGame(String gameId) {
-    games.remove(gameId);
-  }
-
-  private Game ensurePlaying(String gameId) {
-    Game game = getGame(gameId);
-    if (!"PLAYING".equals(game.getStatus())) throw new GameException.GameNotRunning();
-    return game;
+  private void ensurePlaying(Game game) {
+    if (game.status() != GameStatus.PLAYING) throw new GameException.GameNotRunning();
   }
 
   private void assertActivePlayer(Game game, String playerId) {
@@ -145,13 +137,13 @@ public class GameEngine {
 
   private void checkWinner(Game game) {
     List<Player> players = game.getPlayers();
-    if (players.stream().allMatch(p -> p.heroState().isDead())) {
+    if (players.stream().allMatch(player -> player.heroState().isDead())) {
       game.finish(null, "DRAW");
       return;
     }
-    for (Player p : players) {
-      if (p.heroState().isDead()) {
-        String winner = players.stream().filter(x -> !x.id().equals(p.id()))
+    for (Player player : players) {
+      if (player.heroState().isDead()) {
+        String winner = players.stream().filter(candidate -> !candidate.id().equals(player.id()))
             .findFirst().map(Player::id).orElse(null);
         game.finish(winner, "");
         return;

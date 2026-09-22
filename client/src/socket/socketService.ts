@@ -1,8 +1,13 @@
 import {
   ClientEvents,
+  type CreateRoomPayload,
+  type GameActionPayload,
+  type HeroClass,
   type AttackPayload,
   type JoinRoomPayload,
   type PlayCardPayload,
+  type ReconnectGamePayload,
+  type SubmitLoadoutPayload,
 } from '@coincard/shared';
 import { CompatSocket } from './compatSocket';
 
@@ -22,7 +27,8 @@ class SocketService {
     this.socket.on('connect', () => {
       const auth = this.socket?.auth as { sessionToken?: string } | undefined;
       if (auth?.sessionToken) {
-        this.socket?.emit(ClientEvents.RECONNECT_GAME, { sessionToken: auth.sessionToken });
+        const payload: ReconnectGamePayload = { sessionToken: auth.sessionToken };
+        this.socket?.emit(ClientEvents.RECONNECT_GAME, payload);
       }
     });
     return this.socket;
@@ -49,15 +55,17 @@ class SocketService {
   }
 
   createRoom(playerName: string): void {
-    this.getSocket().emit(ClientEvents.CREATE_ROOM, { playerName });
+    const payload: CreateRoomPayload = { playerName };
+    this.getSocket().emit(ClientEvents.CREATE_ROOM, payload);
   }
 
   joinRoom(payload: JoinRoomPayload): void {
     this.getSocket().emit(ClientEvents.JOIN_ROOM, payload);
   }
 
-  selectDeck(heroId: string, roomCode: string): void {
-    this.getSocket().emit(ClientEvents.SELECT_DECK, { heroId, roomCode });
+  submitLoadout(heroClass: HeroClass, roomCode: string, cardSlugs: string[]): void {
+    const payload: SubmitLoadoutPayload = { heroClass, roomCode, cardSlugs };
+    this.getSocket().emit(ClientEvents.SUBMIT_LOADOUT, payload);
   }
 
   playCard(payload: PlayCardPayload): void {
@@ -69,19 +77,19 @@ class SocketService {
   }
 
   endTurn(gameId: string): void {
-    this.getSocket().emit(ClientEvents.END_TURN, { gameId });
+    const payload: GameActionPayload = { gameId };
+    this.getSocket().emit(ClientEvents.END_TURN, payload);
   }
 
   useHeroPower(gameId: string): void {
-    this.getSocket().emit(ClientEvents.USE_HERO_POWER, { gameId });
+    const payload: GameActionPayload = { gameId };
+    this.getSocket().emit(ClientEvents.USE_HERO_POWER, payload);
   }
 
-  drawCard(gameId: string): void {
-    this.getSocket().emit(ClientEvents.DRAW_CARD, { gameId });
-  }
 
   concede(gameId: string): void {
-    this.getSocket().emit(ClientEvents.CONCEDE, { gameId });
+    const payload: GameActionPayload = { gameId };
+    this.getSocket().emit(ClientEvents.CONCEDE, payload);
   }
 
   clearSession(): void {
@@ -89,7 +97,8 @@ class SocketService {
   }
 
   rematch(gameId: string): void {
-    this.getSocket().emit(ClientEvents.REMATCH, { gameId });
+    const payload: GameActionPayload = { gameId };
+    this.getSocket().emit(ClientEvents.REMATCH, payload);
   }
 
   disconnect(): void {

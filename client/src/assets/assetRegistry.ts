@@ -1,5 +1,6 @@
 // Nơi DUY NHẤT biết đường dẫn ảnh — UI không hard-code path.
 // Ảnh server trả về dạng 'assets/...' (relative) → resolve thành URL public + encode.
+import { HeroClass } from '@coincard/shared';
 
 const PUBLIC_BASE = '/';
 
@@ -9,7 +10,7 @@ export function resolveAsset(relativePath: string): string {
 }
 
 interface HeroAsset {
-  heroClass: string;
+  heroClass: HeroClass;
   name: string;
   portrait: string;
   power: string;
@@ -21,7 +22,7 @@ interface HeroAsset {
 
 const HERO_ASSETS: Record<string, HeroAsset> = {
   MAGE: {
-    heroClass: 'MAGE',
+    heroClass: HeroClass.MAGE,
     name: 'Jaina',
     portrait: 'assets/images/Heros/Jaina Proudmoore.png',
     power: 'assets/images/HeroPower/Mage.png',
@@ -31,7 +32,7 @@ const HERO_ASSETS: Record<string, HeroAsset> = {
     defeatSplash: 'assets/images/Heros/Mage-Defeat.png',
   },
   HUNTER: {
-    heroClass: 'HUNTER',
+    heroClass: HeroClass.HUNTER,
     name: 'Rexxar',
     portrait: 'assets/images/Heros/Rexxar.png',
     power: 'assets/images/HeroPower/Hunter.png',
@@ -41,7 +42,7 @@ const HERO_ASSETS: Record<string, HeroAsset> = {
     defeatSplash: 'assets/images/Heros/Hunter-Defeat.png',
   },
   PALADIN: {
-    heroClass: 'PALADIN',
+    heroClass: HeroClass.PALADIN,
     name: 'Uther',
     portrait: 'assets/images/Heros/Uther Lightbringer.png',
     power: 'assets/images/HeroPower/Paladin.png',
@@ -51,7 +52,7 @@ const HERO_ASSETS: Record<string, HeroAsset> = {
     defeatSplash: 'assets/images/Heros/Paladin-Defeat.png',
   },
   PRIEST: {
-    heroClass: 'PRIEST',
+    heroClass: HeroClass.PRIEST,
     name: 'Anduin',
     portrait: 'assets/images/Heros/Anduin-Wrynn.png',
     power: 'assets/images/HeroPower/Priest.png',
@@ -61,7 +62,7 @@ const HERO_ASSETS: Record<string, HeroAsset> = {
     defeatSplash: 'assets/images/Heros/Priest-Defeat.png',
   },
   WARLOCK: {
-    heroClass: 'WARLOCK',
+    heroClass: HeroClass.WARLOCK,
     name: "Gul'dan",
     portrait: "assets/images/Heros/Gul'dan.png",
     power: 'assets/images/HeroPower/Warlock.png',
@@ -75,7 +76,7 @@ const HERO_ASSETS: Record<string, HeroAsset> = {
 export function getHeroAsset(heroClass: string): HeroAsset {
   return (
     HERO_ASSETS[heroClass] ?? {
-      heroClass,
+      heroClass: HeroClass.NEUTRAL,
       name: heroClass,
       portrait: 'assets/images/design/NoCardView.png',
       power: 'assets/images/HeroPower/Mage.png',

@@ -1,8 +1,8 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
-import type { GameState } from '@coincard/shared';
+import type { GameState, HeroClass, RoomPlayerState } from '@coincard/shared';
 import { socketService } from '../socket/socketService';
 
-type ScreenPhase = 'home' | 'lobby' | 'game' | 'over';
+type ScreenPhase = 'home' | 'lobby' | 'deck' | 'game' | 'over';
 
 interface SessionInfo {
   roomCode: string;
@@ -19,10 +19,10 @@ interface GameStoreValue {
   setGameState: (state: GameState | null) => void;
   lastError: string | null;
   setLastError: (message: string | null) => void;
-  selectedHeroId: string | null;
-  setSelectedHeroId: (heroId: string | null) => void;
-  lobbyPlayers: Array<{ playerId: string; name: string }>;
-  setLobbyPlayers: (players: Array<{ playerId: string; name: string }>) => void;
+  selectedHeroId: HeroClass | null;
+  setSelectedHeroId: (heroId: HeroClass | null) => void;
+  lobbyPlayers: RoomPlayerState[];
+  setLobbyPlayers: (players: RoomPlayerState[]) => void;
   reset: () => void;
 }
 
@@ -44,8 +44,8 @@ export function GameStoreProvider({ children }: { children: ReactNode }) {
   const [session, setSessionState] = useState<SessionInfo | null>(() => loadStoredSession());
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [lastError, setLastError] = useState<string | null>(null);
-  const [selectedHeroId, setSelectedHeroId] = useState<string | null>(null);
-  const [lobbyPlayers, setLobbyPlayers] = useState<Array<{ playerId: string; name: string }>>([]);
+  const [selectedHeroId, setSelectedHeroId] = useState<HeroClass | null>(null);
+  const [lobbyPlayers, setLobbyPlayers] = useState<RoomPlayerState[]>([]);
 
   const setSession = useCallback((next: SessionInfo | null) => {
     setSessionState(next);

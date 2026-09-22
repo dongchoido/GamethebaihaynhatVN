@@ -1,10 +1,14 @@
 package vn.coincard.server.model;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 import vn.coincard.server.game.Constants;
 import vn.coincard.server.game.Hero;
+import vn.coincard.server.game.HeroClass;
 import vn.coincard.server.game.Minion;
 
 /**
@@ -15,17 +19,15 @@ class GameCharacterTest {
 
   @Test
   void heroAndMinionAreGameCharacters() {
-    Hero hero = new Hero("h1", "Jaina", "MAGE", "Fireblast", 2, "img");
+    Hero hero = new Hero("h1", "Jaina", HeroClass.MAGE, "Fireblast", 2, "img");
     Minion minion = new Minion("m1", "c1", "Yeti", 4, 5, "p1", false, "img");
     assertTrue(hero instanceof GameCharacter);
     assertTrue(minion instanceof GameCharacter);
-    assertEquals("HERO", hero.getCharacterType());
-    assertEquals("MINION", minion.getCharacterType());
   }
 
   @Test
   void takeDamageAndHeal() {
-    Hero hero = new Hero("h1", "Jaina", "MAGE", "Fireblast", 2, "img");
+    Hero hero = new Hero("h1", "Jaina", HeroClass.MAGE, "Fireblast", 2, "img");
     hero.takeDamage(10);
     assertEquals(20, hero.currentHealth());
     hero.heal(5);
@@ -46,7 +48,7 @@ class GameCharacterTest {
 
   @Test
   void healthNeverNegative() {
-    Hero hero = new Hero("h1", "Jaina", "MAGE", "Fireblast", 2, "img");
+    Hero hero = new Hero("h1", "Jaina", HeroClass.MAGE, "Fireblast", 2, "img");
     hero.takeDamage(100);
     assertEquals(0, hero.currentHealth());
     assertTrue(hero.isDead());
@@ -54,27 +56,23 @@ class GameCharacterTest {
 
   @Test
   void negativeDamageThrows() {
-    Hero hero = new Hero("h1", "Jaina", "MAGE", "Fireblast", 2, "img");
+    Hero hero = new Hero("h1", "Jaina", HeroClass.MAGE, "Fireblast", 2, "img");
     assertThrows(IllegalArgumentException.class, () -> hero.takeDamage(-1));
     assertThrows(IllegalArgumentException.class, () -> hero.heal(-1));
   }
 
   @Test
-  void checkpointMemento() {
+  void minionStateMutatesThroughBehavior() {
     Minion m = new Minion("m1", "c1", "Yeti", 4, 5, "p1", false, "img");
-    Runnable cp = m.checkpoint();
     m.takeDamage(3);
     m.modifyAttack(2);
     assertEquals(2, m.currentHealth());
     assertEquals(6, m.currentAttack());
-    cp.run();
-    assertEquals(5, m.currentHealth());
-    assertEquals(4, m.currentAttack());
   }
 
   @Test
   void polymorphismViaGameCharacter() {
-    GameCharacter hero = new Hero("h1", "Jaina", "MAGE", "Fireblast", 2, "img");
+    GameCharacter hero = new Hero("h1", "Jaina", HeroClass.MAGE, "Fireblast", 2, "img");
     GameCharacter minion = new Minion("m1", "c1", "Yeti", 2, 2, "p1", false, "img");
     hero.takeDamage(5);
     minion.takeDamage(1);

@@ -4,16 +4,19 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.util.List;
-import java.util.Map;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.support.TransactionTemplate;
 import vn.coincard.server.db.Repositories.CatalogRepository;
 import vn.coincard.server.db.Repositories.GamePlayerInput;
-import vn.coincard.server.db.Repositories.GameRepository;
+import vn.coincard.server.db.Repositories.GameResultRepository;
 import vn.coincard.server.db.Repositories.HeroRecord;
 import vn.coincard.server.game.CardTypes;
+import vn.coincard.server.game.CardType;
+import vn.coincard.server.game.HeroClass;
+import vn.coincard.server.game.Keyword;
+import vn.coincard.server.game.Rarity;
 
 /** JDBC adapters for the card catalog and transactional match results. */
 @Repository
@@ -46,7 +49,7 @@ public class JdbcRepositories {
     @Override
     public List<HeroRecord> heroes() {
       return jdbc.query("SELECT id, name, heroClass, powerName, powerCost, imagePath FROM Hero",
-          (rs, i) -> new HeroRecord(rs.getString(1), rs.getString(2), rs.getString(3),
+          (rs, i) -> new HeroRecord(rs.getString(1), rs.getString(2), HeroClass.fromWire(rs.getString(3)),
               rs.getString(4), rs.getInt(5), rs.getString(6)));
     }
 
@@ -57,26 +60,17 @@ public class JdbcRepositories {
               + " heroClass, imagePath, effects, keywords, collectible FROM Card WHERE collectible = 1",
           (rs, i) -> {
             try {
-              List<Map<String, Object>> effects = mapper.readValue(rs.getString("effects"),
-                  new TypeReference<List<Map<String, Object>>>() {});
-              List<String> keywords = mapper.readValue(rs.getString("keywords"),
-                  new TypeReference<List<String>>() {});
-              Map<String, Object> m = new java.util.LinkedHashMap<>();
-              m.put("id", rs.getString("id"));
-              m.put("name", rs.getString("name"));
-              m.put("slug", rs.getString("slug"));
-              m.put("description", rs.getString("description"));
-              m.put("type", rs.getString("type"));
-              m.put("rarity", rs.getString("rarity"));
-              m.put("manaCost", rs.getInt("manaCost"));
-              m.put("attack", rs.getInt("attack"));
-              m.put("health", rs.getInt("health"));
-              m.put("heroClass", rs.getString("heroClass"));
-              m.put("imagePath", rs.getString("imagePath"));
-              m.put("effects", effects);
-              m.put("keywords", keywords);
-              m.put("collectible", rs.getInt("collectible") == 1);
-              return CardTypes.cardFromMap(m);
+              List<CardTypes.EffectDefinition> effects = mapper.readValue(rs.getString("effects"),
+                  new TypeReference<List<CardTypes.EffectDefinition>>() {});
+              List<Keyword> keywords = mapper.readValue(rs.getString("keywords"),
+                  new TypeReference<List<Keyword>>() {});
+              return new CardTypes.CardDefinition(
+                  rs.getString("id"), rs.getString("name"), rs.getString("slug"),
+                  rs.getString("description"), CardType.fromWire(rs.getString("type")),
+                  Rarity.fromWire(rs.getString("rarity")), rs.getInt("manaCost"),
+                  rs.getInt("attack"), rs.getInt("health"),
+                  HeroClass.fromWire(rs.getString("heroClass")), rs.getString("imagePath"),
+                  effects, keywords, rs.getInt("collectible") == 1);
             } catch (Exception e) {
               throw new IllegalStateException("Catalog row lỗi.", e);
             }
@@ -85,7 +79,7 @@ public class JdbcRepositories {
   }
 
   @Repository
-  public static class JdbcGameRepository implements GameRepository {
+  public static class JdbcGameRepository implements GameResultRepository {
     private final TransactionTemplate tx;
 
     public JdbcGameRepository(JdbcTemplate jdbc) {
@@ -131,20 +125,19 @@ public class JdbcRepositories {
     return n == null ? 0 : n;
   }
 
-  public void upsertCard(JdbcTemplate jdbc, Map<String, Object> card, String now) {
+  public void upsertCard(JdbcTemplate jdbc, CardTypes.CardDefinition card, String now) {
     try {
-      String id = "card_" + card.get("slug");
-      String effects = mapper.writeValueAsString(card.getOrDefault("effects", List.of()));
-      String keywords = mapper.writeValueAsString(card.getOrDefault("keywords", List.of()));
-      Object[] args = { id, card.get("name"), card.get("slug"), card.get("description"),
-          card.get("type"), card.get("rarity"), num(card.get("manaCost")), num(card.get("attack")),
-          num(card.get("health")), card.get("heroClass"), card.get("imagePath"),
-          effects, keywords, 1, now, now };
+      String effects = mapper.writeValueAsString(card.effects());
+      String keywords = mapper.writeValueAsString(card.keywords());
+      Object[] args = { card.id(), card.name(), card.slug(), card.description(),
+          card.type().name(), card.rarity().name(), card.manaCost(), card.attack(), card.health(),
+          card.heroClass().name(), card.imagePath(), effects, keywords, card.collectible() ? 1 : 0,
+          now, now };
       int updated = jdbc.update("UPDATE Card SET name=?, slug=?, description=?, type=?, rarity=?,"
           + " manaCost=?, attack=?, health=?, heroClass=?, imagePath=?, effects=?, keywords=?,"
           + " collectible=?, updatedAt=? WHERE slug=?",
           args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8], args[9],
-          args[10], args[11], args[12], args[13], args[15], card.get("slug"));
+          args[10], args[11], args[12], args[13], args[15], card.slug());
       if (updated == 0) {
         jdbc.update("INSERT INTO Card (id, name, slug, description, type, rarity, manaCost, attack,"
             + " health, heroClass, imagePath, effects, keywords, collectible, createdAt, updatedAt)"
@@ -155,17 +148,14 @@ public class JdbcRepositories {
     }
   }
 
-  public void upsertHero(JdbcTemplate jdbc, String id, String name, String heroClass,
+  public void upsertHero(JdbcTemplate jdbc, String id, String name, HeroClass heroClass,
       String powerName, int powerCost, String imagePath) {
     int updated = jdbc.update("UPDATE Hero SET name=?, powerName=?, powerCost=?, imagePath=?"
-        + " WHERE heroClass=?", name, powerName, powerCost, imagePath, heroClass);
+        + " WHERE heroClass=?", name, powerName, powerCost, imagePath, heroClass.name());
     if (updated == 0) {
       jdbc.update("INSERT INTO Hero (id, name, heroClass, powerName, powerCost, imagePath)"
-          + " VALUES (?, ?, ?, ?, ?, ?)", id, name, heroClass, powerName, powerCost, imagePath);
+          + " VALUES (?, ?, ?, ?, ?, ?)", id, name, heroClass.name(), powerName, powerCost, imagePath);
     }
   }
 
-  private static int num(Object v) {
-    return v == null ? 0 : ((Number) v).intValue();
-  }
 }

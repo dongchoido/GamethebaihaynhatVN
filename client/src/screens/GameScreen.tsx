@@ -37,6 +37,10 @@ function validTargetIds(card: CardDefinition, myId: string, oppId: string, myBoa
         oppBoard.forEach((id) => ids.add(id));
         ids.add(oppId);
         break;
+      case 'FRIENDLY_CHARACTER':
+        myBoard.forEach((id) => ids.add(id));
+        ids.add(myId);
+        break;
       case 'ANY_CHARACTER':
         myBoard.forEach((id) => ids.add(id));
         oppBoard.forEach((id) => ids.add(id));
@@ -74,9 +78,8 @@ export function GameScreen() {
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [selectedAttackerId, setSelectedAttackerId] = useState<string | null>(null);
   const [endTurnPending, setEndTurnPending] = useState(false);
-  const [drawPending, setDrawPending] = useState(false);
   const prevTurnRef = useRef<number>(0);
-  const MAX_HAND = 6;
+  const MAX_HAND = 10;
 
   // Preload ảnh nút để bấm là hiện ngay, không nháy.
   useEffect(() => {
@@ -102,7 +105,6 @@ export function GameScreen() {
       setSelectedCardId(null);
       setSelectedAttackerId(null);
       setEndTurnPending(false);
-      setDrawPending(false);
     };
     const onRejected = (res: ActionRejectedResponse) => {
       // Game trên server đã mất → về home sạch thay vì kẹt.
@@ -112,7 +114,6 @@ export function GameScreen() {
       }
       setLastError(`${res.code}: ${res.message}`);
       setEndTurnPending(false);
-      setDrawPending(false);
     };
     const onGameOver = (_res: GameOverResponse) => {
       if (_res.winnerId === session?.playerId) playSound(SOUND.victory);
@@ -186,7 +187,6 @@ export function GameScreen() {
   };
 
   const oppHasTaunt = oppPlayer?.board.some((m) => m.hasTaunt) ?? false;
-  const oppHasMinions = (oppPlayer?.board.length ?? 0) > 0;
 
   const handleMinionClick = (instanceId: string, isMine: boolean) => {
     setLastError(null);
@@ -196,6 +196,7 @@ export function GameScreen() {
     if (selectedCard) {
       if (targetIds.has(instanceId)) {
         sendPlayCard(selectedCard.id, instanceId);
+        return;
       } else {
         setSelectedCardId(null);
         if (!isMine) return;
@@ -230,8 +231,8 @@ export function GameScreen() {
       return;
     }
     if (!isMine && selectedAttackerId) {
-      if (oppHasMinions) {
-        setLastError('MINIONS_BLOCK_HERO: Đối thủ còn minion — phải tấn công minion trước.');
+      if (oppHasTaunt) {
+        setLastError('TAUNT_REQUIRED: Phải tấn công minion Taunt trước.');
         return;
       }
       socketService.attack({
@@ -251,16 +252,8 @@ export function GameScreen() {
   };
 
   const handleHeroPower = () => {
-    if (!isMyTurn) return;
+    if (!isMyTurn || myPlayer.heroPowerUsed || myPlayer.mana < myPlayer.hero.powerCost) return;
     socketService.useHeroPower(gameState.gameId);
-    playSound(SOUND.play);
-  };
-
-  const handleDraw = () => {
-    if (!isMyTurn || drawPending || gameState.manualDrawUsed) return;
-    setLastError(null);
-    setDrawPending(true);
-    socketService.drawCard(gameState.gameId);
     playSound(SOUND.play);
   };
 
@@ -285,7 +278,7 @@ export function GameScreen() {
         <HeroView
           hero={oppPlayer.hero}
           powerUsable={false}
-          targetable={isMyTurn && ((selectedAttackerId !== null && !oppHasMinions) || (selectedCard !== null && targetIds.has(oppPlayer.playerId)))}
+          targetable={isMyTurn && ((selectedAttackerId !== null && !oppHasTaunt) || (selectedCard !== null && targetIds.has(oppPlayer.playerId)))}
           onHeroClick={() => handleHeroClick(oppPlayer.playerId, false)}
           onPowerClick={() => undefined}
         />
@@ -342,7 +335,7 @@ export function GameScreen() {
         <div className="my-hero-mana">
           <HeroView
             hero={myPlayer.hero}
-            powerUsable={isMyTurn && myPlayer.mana >= myPlayer.hero.powerCost}
+            powerUsable={isMyTurn && !myPlayer.heroPowerUsed && myPlayer.mana >= myPlayer.hero.powerCost}
             targetable={isMyTurn && selectedCard !== null && targetIds.has(myPlayer.playerId)}
             onHeroClick={() => handleHeroClick(myPlayer.playerId, true)}
             onPowerClick={handleHeroPower}
@@ -353,12 +346,16 @@ export function GameScreen() {
           <button
             type="button"
             className="deck-pile"
-            onClick={handleDraw}
-            disabled={!isMyTurn || drawPending || gameState.manualDrawUsed || myPlayer.hand.length >= MAX_HAND || myPlayer.deckCount <= 0}
-            title={myPlayer.hand.length >= MAX_HAND ? 'Tay đầy (6/6)' : 'Rút 1 lá (mỗi turn 1 lần)'}
+            disabled
+            title="Tự rút đầu lượt"
           >
             <img src={resolveAsset(UI_IMAGE.cardBack)} alt="Bộ bài" draggable={false} />
             <span className="deck-count">{myPlayer.deckCount}</span>
+            {myPlayer.fatigueDamage > 0 && (
+              <span className="fatigue-counter" title={`Fatigue tiếp theo: ${myPlayer.fatigueDamage + 1}`}>
+                F{myPlayer.fatigueDamage + 1}
+              </span>
+            )}
           </button>
           <button type="button" className="end-turn-btn" onClick={handleEndTurn} disabled={!isMyTurn || endTurnPending} title="End turn">
             <img

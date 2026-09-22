@@ -30,7 +30,16 @@ async function waitForServer(server, gameUrl) {
     }
     try {
       const response = await fetch(`${gameUrl}/health`);
-      if (response.ok) return;
+      if (response.ok) {
+        const catalogResponse = await fetch(`${gameUrl}/api/game-catalog`);
+        if (catalogResponse.ok) {
+          const catalog = await catalogResponse.json();
+          const ready = catalog.heroes?.length === 5
+            && Object.values(catalog.suggestedDecks ?? {})
+              .every((deck) => Array.isArray(deck) && deck.length === catalog.deckRules?.deckSize);
+          if (ready) return;
+        }
+      }
     } catch {
       // Server đang khởi động.
     }
@@ -49,38 +58,51 @@ function run(script, gameUrl) {
   if (result.status !== 0) throw new Error(`${script} thất bại.`);
 }
 
-const port = await reservePort();
-const gameUrl = `http://127.0.0.1:${port}`;
-const tempDir = mkdtempSync(join(tmpdir(), 'coincard-verify-'));
-let output = '';
-const server = spawn('java', ['-jar', jar], {
-  cwd: root,
-  stdio: ['ignore', 'pipe', 'pipe'],
-  env: {
-    ...process.env,
-    PORT: String(port),
-    DATABASE_URL: '',
-    COINCARD_DB_PATH: join(tempDir, 'verify.db'),
-  },
-});
-server.stdout.on('data', (chunk) => { output += chunk; });
-server.stderr.on('data', (chunk) => { output += chunk; });
+async function withProductionServer(cardsPath, scenarios) {
+  const port = await reservePort();
+  const gameUrl = `http://127.0.0.1:${port}`;
+  const tempDir = mkdtempSync(join(tmpdir(), 'coincard-verify-'));
+  let output = '';
+  const server = spawn('java', ['-jar', jar], {
+    cwd: root,
+    stdio: ['ignore', 'pipe', 'pipe'],
+    env: {
+      ...process.env,
+      PORT: String(port),
+      DATABASE_URL: '',
+      COINCARD_DB_PATH: join(tempDir, 'verify.db'),
+      COINCARD_RANDOM_SEED: '20260921',
+      ...(cardsPath ? { COINCARD_CARDS_PATH: cardsPath } : {}),
+    },
+  });
+  server.stdout.on('data', (chunk) => { output += chunk; });
+  server.stderr.on('data', (chunk) => { output += chunk; });
 
-try {
-  await waitForServer(server, gameUrl);
-  const rootResponse = await fetch(`${gameUrl}/`);
-  if (!rootResponse.ok) throw new Error(`Trang production trả HTTP ${rootResponse.status}.`);
+  try {
+    await waitForServer(server, gameUrl);
+    const rootResponse = await fetch(`${gameUrl}/`);
+    if (!rootResponse.ok) throw new Error(`Trang production trả HTTP ${rootResponse.status}.`);
+    await scenarios(gameUrl);
+  } catch (error) {
+    if (output) console.error(output);
+    throw error;
+  } finally {
+    if (process.platform === 'win32') {
+      spawnSync('taskkill', ['/PID', String(server.pid), '/T', '/F'], { stdio: 'ignore' });
+    } else {
+      server.kill('SIGTERM');
+    }
+    rmSync(tempDir, { recursive: true, force: true });
+  }
+}
+
+await withProductionServer(null, (gameUrl) => {
   run('e2e-two-players.cjs', gameUrl);
   run('e2e-negative.cjs', gameUrl);
   run('e2e-connection.cjs', gameUrl);
-} catch (error) {
-  if (output) console.error(output);
-  throw error;
-} finally {
-  if (process.platform === 'win32') {
-    spawnSync('taskkill', ['/PID', String(server.pid), '/T', '/F'], { stdio: 'ignore' });
-  } else {
-    server.kill('SIGTERM');
-  }
-  rmSync(tempDir, { recursive: true, force: true });
-}
+});
+
+const rulesCatalog = fileURLToPath(new URL('../e2e/rules-cards.json', import.meta.url));
+await withProductionServer(rulesCatalog, (gameUrl) => {
+  run('e2e-rules.cjs', gameUrl);
+});

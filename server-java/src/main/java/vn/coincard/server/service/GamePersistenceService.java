@@ -1,34 +1,34 @@
 package vn.coincard.server.service;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.stereotype.Service;
 import vn.coincard.server.db.Repositories.GamePlayerInput;
-import vn.coincard.server.db.Repositories.GameRepository;
-import vn.coincard.server.game.Game;
-import vn.coincard.server.game.Player;
-import vn.coincard.server.room.Room;
+import vn.coincard.server.db.Repositories.GameResultRepository;
 
 /**
  * SRP: chỉ lo lưu kết quả trận — tách khỏi GameService.
- * Thể hiện Single Responsibility và Dependency Inversion (phụ thuộc GameRepository abstraction).
+ * Thể hiện Single Responsibility và Dependency Inversion (phụ thuộc GameResultRepository abstraction).
  */
 @Service
 public class GamePersistenceService {
-  private final GameRepository gameRepository;
+  private static final Logger log = LoggerFactory.getLogger(GamePersistenceService.class);
+  private final GameResultRepository gameRepository;
+  private final TaskExecutor taskExecutor;
   private final Set<String> savedGames = ConcurrentHashMap.newKeySet();
   private final Set<String> pendingSaves = ConcurrentHashMap.newKeySet();
   private final Set<String> gameOverEmitted = ConcurrentHashMap.newKeySet();
 
-  public GamePersistenceService(GameRepository gameRepository) {
+  public GamePersistenceService(GameResultRepository gameRepository,
+      @Qualifier("gameTaskExecutor") TaskExecutor taskExecutor) {
     this.gameRepository = gameRepository;
-  }
-
-  public boolean shouldSave(String gameId) {
-    return !savedGames.contains(gameId) && !pendingSaves.contains(gameId);
+    this.taskExecutor = taskExecutor;
   }
 
   public boolean shouldEmitGameOver(String gameId) {
@@ -39,35 +39,29 @@ public class GamePersistenceService {
     gameOverEmitted.add(gameId);
   }
 
-  public void saveGame(Game game, Room room, String currentGameIdForRoom, int attempt) {
-    if (!shouldSave(game.getGameId())) return;
-    pendingSaves.add(game.getGameId());
-    doSave(game, room, currentGameIdForRoom, attempt);
+  public void saveGame(FinishedGame game, String currentGameIdForRoom, int attempt) {
+    if (savedGames.contains(game.gameId()) || !pendingSaves.add(game.gameId())) return;
+    doSave(game, currentGameIdForRoom, attempt);
   }
 
-  private void doSave(Game game, Room room, String currentGameIdForRoom, int attempt) {
+  private void doSave(FinishedGame game, String currentGameIdForRoom, int attempt) {
     CompletableFuture.runAsync(() -> {
       try {
-        List<GamePlayerInput> players = new ArrayList<>();
-        for (Player p : game.getPlayers()) {
-          players.add(new GamePlayerInput(p.id(), p.getName(),
-              game.getWinnerId() != null && game.getWinnerId().equals(p.id())));
+        gameRepository.recordFinishedGame(game.gameId(), game.roomCode(), game.players(),
+            game.winnerId());
+        if (currentGameIdForRoom != null && currentGameIdForRoom.equals(game.gameId())) {
+          savedGames.add(game.gameId());
         }
-        gameRepository.recordFinishedGame(game.getGameId(), room.getRoomCode(), players, game.getWinnerId());
-        if (currentGameIdForRoom != null && currentGameIdForRoom.equals(game.getGameId())) {
-          savedGames.add(game.getGameId());
-        }
-        pendingSaves.remove(game.getGameId());
+        pendingSaves.remove(game.gameId());
       } catch (RuntimeException error) {
-        System.err.println("Không lưu được kết quả " + game.getGameId() + ": " + error.getMessage());
+        log.error("Không lưu được kết quả {}", game.gameId(), error);
         if (attempt < 2) {
-          try { Thread.sleep(1000L * (attempt + 1)); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); }
-          doSave(game, room, currentGameIdForRoom, attempt + 1);
+          doSave(game, currentGameIdForRoom, attempt + 1);
         } else {
-          pendingSaves.remove(game.getGameId());
+          pendingSaves.remove(game.gameId());
         }
       }
-    });
+    }, taskExecutor);
   }
 
   public void removeGame(String gameId) {
@@ -76,7 +70,11 @@ public class GamePersistenceService {
     pendingSaves.remove(gameId);
   }
 
-  public void clearPending(String gameId) {
-    pendingSaves.remove(gameId);
+  /** Immutable result captured while a game session lock is held. */
+  public record FinishedGame(String gameId, String roomCode, List<GamePlayerInput> players,
+      String winnerId) {
+    public FinishedGame {
+      players = List.copyOf(players);
+    }
   }
 }

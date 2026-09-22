@@ -1,4 +1,4 @@
-import type { CardDefinition } from './cards.js';
+import type { CardDefinition, HeroClass } from './cards.js';
 
 export enum GameStatus {
   WAITING = 'WAITING',
@@ -9,7 +9,7 @@ export enum GameStatus {
 export interface HeroState {
   heroId: string;
   name: string;
-  heroClass: string;
+  heroClass: HeroClass;
   health: number;
   maxHealth: number;
   imagePath: string;
@@ -41,6 +41,8 @@ export interface PlayerState {
   damageDealt: number;
   cardsPlayed: number;
   minionsSummoned: number;
+  heroPowerUsed: boolean;
+  fatigueDamage: number;
 }
 
 export interface GameState {
@@ -52,5 +54,4 @@ export interface GameState {
   players: PlayerState[];
   winnerId: string | null;
   statusMessage: string;
-  manualDrawUsed: boolean;
 }

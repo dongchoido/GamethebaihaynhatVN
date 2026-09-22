@@ -1,19 +1,30 @@
 package vn.coincard.server.power;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
-import org.junit.jupiter.api.Test;
-import vn.coincard.server.game.*;
 import java.util.List;
+import org.junit.jupiter.api.Test;
+import vn.coincard.server.game.Deck;
+import vn.coincard.server.game.CardType;
+import vn.coincard.server.game.CardTypes;
+import vn.coincard.server.game.Game;
+import vn.coincard.server.game.GameTestAccess;
+import vn.coincard.server.game.Hero;
+import vn.coincard.server.game.HeroClass;
+import vn.coincard.server.game.HeroPower;
+import vn.coincard.server.game.HeroPowerRegistry;
+import vn.coincard.server.game.Player;
+import vn.coincard.server.game.Rarity;
 
 /**
  * Abstraction + Polymorphism: HeroPower là Strategy.
  */
 class HeroPowerTest {
 
-  private Player playerWithHero(String id, String heroClass, int mana) {
+  private Player playerWithHero(String id, HeroClass heroClass, int mana) {
     Hero hero = new Hero("h", "Test", heroClass, "Power", 2, "img");
-    Player p = new Player(id, "One-" + id, hero, new Deck(List.of()));
+    Player p = new Player(id, "One-" + id, hero, new Deck(testDeck()));
     for (int i = 0; i < mana; i++) p.increaseMaxMana();
     p.refillMana();
     return p;
@@ -21,12 +32,12 @@ class HeroPowerTest {
 
   @Test
   void magePowerDealsOneDamage() {
-    Player p1 = playerWithHero("p1", "MAGE", 2);
-    Player p2 = playerWithHero("p2", "MAGE", 0);
-    Game game = new Game("g1", "R1", p1, p2);
-    game.start();
+    Player p1 = playerWithHero("p1", HeroClass.MAGE, 2);
+    Player p2 = playerWithHero("p2", HeroClass.MAGE, 0);
+    Game game = game(p1, p2);
+    GameTestAccess.start(game, "p1");
     // Ensure it's p1 turn and has mana
-    HeroPower power = HeroPower.forClass("MAGE");
+    HeroPower power = powerFor(HeroClass.MAGE);
     int hpBefore = p2.heroState().currentHealth();
     power.execute(game, p1);
     assertEquals(hpBefore - 1, p2.heroState().currentHealth());
@@ -34,43 +45,59 @@ class HeroPowerTest {
 
   @Test
   void paladinPowerSummonsRecruit() {
-    Player p1 = playerWithHero("p1", "PALADIN", 2);
-    HeroPower power = HeroPower.forClass("PALADIN");
-    Game game = new Game("g1", "R1", p1, playerWithHero("p2", "MAGE", 0));
-    game.start();
+    Player p1 = playerWithHero("p1", HeroClass.PALADIN, 2);
+    HeroPower power = powerFor(HeroClass.PALADIN);
+    Game game = game(p1, playerWithHero("p2", HeroClass.MAGE, 0));
+    GameTestAccess.start(game, "p1");
     power.execute(game, p1);
     assertEquals(1, p1.boardCount());
   }
 
   @Test
   void priestPowerHeals() {
-    Player p1 = playerWithHero("p1", "PRIEST", 2);
+    Player p1 = playerWithHero("p1", HeroClass.PRIEST, 2);
     p1.heroState().takeDamage(10);
-    HeroPower power = HeroPower.forClass("PRIEST");
-    Game game = new Game("g1", "R1", p1, playerWithHero("p2", "MAGE", 0));
-    game.start();
+    HeroPower power = powerFor(HeroClass.PRIEST);
+    Game game = game(p1, playerWithHero("p2", HeroClass.MAGE, 0));
+    GameTestAccess.start(game, "p1");
     power.execute(game, p1);
     assertEquals(22, p1.heroState().currentHealth());
   }
 
   @Test
   void warlockPowerDamagesSelfAndDraws() {
-    Player p1 = playerWithHero("p1", "WARLOCK", 2);
-    HeroPower power = HeroPower.forClass("WARLOCK");
-    Game game = new Game("g1", "R1", p1, playerWithHero("p2", "MAGE", 0));
-    game.start();
+    Player p1 = playerWithHero("p1", HeroClass.WARLOCK, 2);
+    HeroPower power = powerFor(HeroClass.WARLOCK);
+    Game game = game(p1, playerWithHero("p2", HeroClass.MAGE, 0));
+    GameTestAccess.start(game, "p1");
     int hpBefore = p1.heroState().currentHealth();
-    int deckBefore = p1.deckSize();
     power.execute(game, p1);
-    assertEquals(hpBefore - 2, p1.heroState().currentHealth());
+    assertEquals(hpBefore - 3, p1.heroState().currentHealth());
   }
 
   @Test
   void differentPowersAreDifferentStrategies() {
-    HeroPower mage = HeroPower.forClass("MAGE");
-    HeroPower hunter = HeroPower.forClass("HUNTER");
-    HeroPower priest = HeroPower.forClass("PRIEST");
+    HeroPower mage = powerFor(HeroClass.MAGE);
+    HeroPower hunter = powerFor(HeroClass.HUNTER);
+    HeroPower priest = powerFor(HeroClass.PRIEST);
     assertNotEquals(mage.getClass(), priest.getClass());
     assertEquals(mage.getClass(), hunter.getClass()); // both DamagePower but different amount
+  }
+
+  private HeroPower powerFor(HeroClass heroClass) {
+    return new HeroPowerRegistry(HeroPower.defaults()).forClass(heroClass);
+  }
+
+  private Game game(Player first, Player second) {
+    return GameTestAccess.create("g1", "R1", first, second);
+  }
+
+  private List<CardTypes.CardDefinition> testDeck() {
+    return List.of(card("d1"), card("d2"), card("d3"), card("d4"));
+  }
+
+  private CardTypes.CardDefinition card(String id) {
+    return new CardTypes.CardDefinition(id, id, id, "", CardType.MINION, Rarity.COMMON,
+        1, 1, 1, HeroClass.NEUTRAL, "img", List.of(), List.of(), true);
   }
 }

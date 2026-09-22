@@ -1,0 +1,24 @@
+package vn.coincard.server.game;
+
+/** Stable public rejection codes shared with the WebSocket protocol. */
+public enum ErrorCode {
+  NOT_PLAYER_TURN,
+  NOT_ENOUGH_MANA,
+  INVALID_TARGET,
+  BOARD_FULL,
+  CARD_NOT_IN_HAND,
+  INVALID_DECK,
+  ROOM_FULL,
+  ROOM_NOT_FOUND,
+  RECONNECT_FAILED,
+  INVALID_PAYLOAD,
+  INVALID_COMMAND,
+  INTERNAL_ERROR,
+  GAME_NOT_RUNNING,
+  HERO_POWER_ALREADY_USED,
+  TAUNT_REQUIRED,
+  GAME_START_FAILED,
+  REMATCH_NOT_ALLOWED,
+  REMATCH_IN_PROGRESS,
+  REMATCH_FAILED;
+}
