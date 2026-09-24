@@ -1,0 +1,226 @@
+package hearthstone.ui;
+
+import hearthstone.model.game.GameState;
+import hearthstone.model.game.Player;
+import hearthstone.persistence.FileGameRepository;
+import hearthstone.service.DeckCatalog;
+import hearthstone.service.DeckOption;
+
+import javax.swing.*;
+import javax.swing.border.EmptyBorder;
+import java.awt.*;
+
+public class LobbyFrame extends JFrame {
+
+    private final FileGameRepository repository;
+    private final DeckCatalog deckCatalog = new DeckCatalog();
+    private final JTextField player1Field = new JTextField("Duc Anh", 18);
+    private final JTextField player2Field = new JTextField("Opponent", 18);
+    private final JComboBox<DeckOption> player1Deck;
+    private final JComboBox<DeckOption> player2Deck;
+    private final JLabel deckDescription = new JLabel(" ");
+
+    public LobbyFrame(FileGameRepository repository) {
+        this.repository = repository;
+        DeckOption[] options = deckCatalog.getOptions().toArray(DeckOption[]::new);
+        player1Deck = new JComboBox<>(options);
+        player2Deck = new JComboBox<>(options);
+        if (options.length > 1) {
+            player2Deck.setSelectedIndex(1);
+        }
+
+        setTitle("Hearthstone Swing - Lobby");
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setMinimumSize(new Dimension(900, 620));
+        setSize(980, 680);
+        setLocationRelativeTo(null);
+        setContentPane(createContent());
+    }
+
+    private JPanel createContent() {
+        GradientPanel root = new GradientPanel(
+                new Color(28, 22, 24),
+                new Color(16, 29, 40)
+        );
+        root.setLayout(new BorderLayout(30, 30));
+        root.setBorder(new EmptyBorder(36, 50, 42, 50));
+
+        root.add(createHeader(), BorderLayout.NORTH);
+
+        JPanel center = new JPanel(new GridLayout(1, 2, 35, 0));
+        center.setOpaque(false);
+        center.add(createIntroduction());
+        center.add(createForm());
+        root.add(center, BorderLayout.CENTER);
+        return root;
+    }
+
+    private JPanel createHeader() {
+        JPanel header = new JPanel(new BorderLayout());
+        header.setOpaque(false);
+
+        JLabel logo = new JLabel("HEARTHSTONE  LITE");
+        logo.setForeground(AppTheme.GOLD);
+        logo.setFont(new Font("Georgia", Font.BOLD, 24));
+        header.add(logo, BorderLayout.WEST);
+
+        JButton historyButton = new JButton("Lịch sử & thống kê");
+        AppTheme.styleSecondaryButton(historyButton);
+        historyButton.addActionListener(event ->
+                new HistoryDialog(this, repository).setVisible(true));
+        header.add(historyButton, BorderLayout.EAST);
+        return header;
+    }
+
+    private JPanel createIntroduction() {
+        JPanel panel = new JPanel();
+        panel.setOpaque(false);
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        panel.setBorder(new EmptyBorder(55, 0, 30, 20));
+
+        JLabel eyebrow = new JLabel("JAVA SWING · OFFLINE DUEL");
+        eyebrow.setForeground(AppTheme.GOLD);
+        eyebrow.setFont(eyebrow.getFont().deriveFont(Font.BOLD, 12f));
+
+        JLabel title = new JLabel("<html>Đấu thẻ bài<br>trên cùng một máy</html>");
+        title.setForeground(AppTheme.TEXT);
+        title.setFont(new Font("Georgia", Font.BOLD, 40));
+
+        JLabel description = new JLabel(
+                "<html><div style='width:360px'>Hai người thay phiên chơi. "
+                        + "Triệu hồi Minion, dùng Spell và hạ Hero đối phương về 0 máu.</div></html>");
+        description.setForeground(AppTheme.MUTED);
+        description.setFont(description.getFont().deriveFont(15f));
+
+        panel.add(eyebrow);
+        panel.add(Box.createVerticalStrut(18));
+        panel.add(title);
+        panel.add(Box.createVerticalStrut(24));
+        panel.add(description);
+        panel.add(Box.createVerticalStrut(32));
+        panel.add(featureLabel("✓ 3 loại Card"));
+        panel.add(Box.createVerticalStrut(10));
+        panel.add(featureLabel("✓ Turn, Mana, Attack, Win/Lose"));
+        panel.add(Box.createVerticalStrut(10));
+        panel.add(featureLabel("✓ Lưu dữ liệu cục bộ"));
+        return panel;
+    }
+
+    private JLabel featureLabel(String text) {
+        JLabel label = new JLabel(text);
+        label.setForeground(AppTheme.TEXT);
+        label.setFont(label.getFont().deriveFont(Font.BOLD, 14f));
+        return label;
+    }
+
+    private JPanel createForm() {
+        JPanel form = new JPanel(new GridBagLayout());
+        form.setBackground(new Color(31, 34, 43, 235));
+        form.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(91, 75, 57), 1, true),
+                new EmptyBorder(24, 28, 24, 28)
+        ));
+
+        player1Field.setFont(player1Field.getFont().deriveFont(15f));
+        player2Field.setFont(player2Field.getFont().deriveFont(15f));
+        player1Deck.addActionListener(event -> updateDeckDescription());
+        player2Deck.addActionListener(event -> updateDeckDescription());
+        deckDescription.setForeground(AppTheme.MUTED);
+
+        GridBagConstraints constraints = new GridBagConstraints();
+        constraints.gridx = 0;
+        constraints.weightx = 1;
+        constraints.fill = GridBagConstraints.HORIZONTAL;
+        constraints.insets = new Insets(7, 0, 4, 0);
+
+        int row = 0;
+        addFormLabel(form, constraints, row++, "Người chơi 1");
+        addField(form, constraints, row++, player1Field);
+        addFormLabel(form, constraints, row++, "Deck người chơi 1");
+        addField(form, constraints, row++, player1Deck);
+        addFormLabel(form, constraints, row++, "Người chơi 2");
+        addField(form, constraints, row++, player2Field);
+        addFormLabel(form, constraints, row++, "Deck người chơi 2");
+        addField(form, constraints, row++, player2Deck);
+
+        constraints.gridy = row++;
+        constraints.insets = new Insets(12, 0, 12, 0);
+        form.add(deckDescription, constraints);
+
+        JButton startButton = new JButton("BẮT ĐẦU TRẬN");
+        AppTheme.stylePrimaryButton(startButton);
+        startButton.addActionListener(event -> startGame());
+        constraints.gridy = row;
+        constraints.insets = new Insets(8, 0, 0, 0);
+        form.add(startButton, constraints);
+        updateDeckDescription();
+        return form;
+    }
+
+    private void addFormLabel(JPanel panel, GridBagConstraints constraints,
+                              int row, String text) {
+        constraints.gridy = row;
+        JLabel label = new JLabel(text);
+        label.setForeground(AppTheme.MUTED);
+        label.setFont(label.getFont().deriveFont(Font.BOLD, 12f));
+        panel.add(label, constraints);
+    }
+
+    private void addField(JPanel panel, GridBagConstraints constraints,
+                          int row, JComponent field) {
+        constraints.gridy = row;
+        field.setPreferredSize(new Dimension(250, 38));
+        panel.add(field, constraints);
+    }
+
+    private void updateDeckDescription() {
+        DeckOption deck = (DeckOption) player1Deck.getSelectedItem();
+        if (deck != null) {
+            deckDescription.setText("<html><div style='width:270px'>"
+                    + deck.description() + "</div></html>");
+        }
+    }
+
+    private void startGame() {
+        String player1Name = player1Field.getText().trim();
+        String player2Name = player2Field.getText().trim();
+        if (player1Name.isEmpty() || player2Name.isEmpty()) {
+            showError("Tên người chơi không được để trống");
+            return;
+        }
+        if (player1Name.equalsIgnoreCase(player2Name)) {
+            showError("Hai người chơi cần có tên khác nhau");
+            return;
+        }
+
+        DeckOption deck1 = (DeckOption) player1Deck.getSelectedItem();
+        DeckOption deck2 = (DeckOption) player2Deck.getSelectedItem();
+        if (deck1 == null || deck2 == null) {
+            showError("Hãy chọn deck cho cả hai người chơi");
+            return;
+        }
+
+        try {
+            repository.ensureUser(player1Name);
+            repository.ensureUser(player2Name);
+            repository.recordDeckSelection(player1Name, deck1.code(), deck1.name());
+            repository.recordDeckSelection(player2Name, deck2.code(), deck2.name());
+
+            Player player1 = new Player(player1Name, deck1.code(), deck1.name(),
+                    deckCatalog.createDeck(deck1.code()));
+            Player player2 = new Player(player2Name, deck2.code(), deck2.name(),
+                    deckCatalog.createDeck(deck2.code()));
+            GameState game = new GameState(player1, player2);
+
+            new GameFrame(game, repository).setVisible(true);
+            dispose();
+        } catch (RuntimeException exception) {
+            showError(exception.getMessage());
+        }
+    }
+
+    private void showError(String message) {
+        JOptionPane.showMessageDialog(this, message,
+                "Không thể bắt đầu", JOptionPane.WARNING_MESSAGE);
+    }
+}
