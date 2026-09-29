@@ -48,6 +48,9 @@ public class GameEngine {
         }
 
         if (HERO_TARGET.equals(targetId)) {
+            if (opponent.hasDefendingMinions()) {
+                throw new GameRuleException("Phải hạ hết Minion phòng thủ trước khi tấn công Hero");
+            }
             opponent.getHero().takeDamage(attacker.getAttack());
         } else {
             MinionCard defender = opponent.findMinion(targetId);

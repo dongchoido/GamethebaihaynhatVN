@@ -14,22 +14,30 @@ import java.awt.event.MouseEvent;
 public class CardButton extends JButton {
 
     private final Border normalBorder;
+    private final Color cardColor;
     private boolean selectedCard;
 
     public CardButton(Card card, boolean onBoard) {
         setText(createHtml(card, onBoard));
-        setPreferredSize(onBoard ? new Dimension(132, 158) : new Dimension(145, 195));
+        setIcon(GameAssets.cardArt(card, onBoard ? 110 : 122, onBoard ? 55 : 65));
+        setHorizontalTextPosition(SwingConstants.CENTER);
+        setVerticalTextPosition(SwingConstants.BOTTOM);
+        setIconTextGap(5);
+        setToolTipText(card.getName() + " — " + card.getDescription());
+        getAccessibleContext().setAccessibleName(card.getName());
+        setPreferredSize(onBoard ? new Dimension(132, 122) : new Dimension(145, 182));
         setMinimumSize(getPreferredSize());
         setMaximumSize(getPreferredSize());
         setVerticalAlignment(SwingConstants.TOP);
         setHorizontalAlignment(SwingConstants.CENTER);
         setFocusPainted(false);
         setOpaque(true);
-        setContentAreaFilled(true);
+        setContentAreaFilled(false);
         setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        setBackground(card.getType() == CardType.MINION
+        cardColor = card.getType() == CardType.MINION
                 ? new Color(224, 192, 133)
-                : new Color(181, 164, 205));
+                : new Color(203, 189, 223);
+        setBackground(cardColor);
         setForeground(new Color(45, 33, 24));
 
         normalBorder = BorderFactory.createCompoundBorder(
@@ -68,29 +76,39 @@ public class CardButton extends JButton {
     }
 
     public void setPlayable(boolean playable) {
-        if (!playable) {
-            setBackground(new Color(125, 122, 116));
-        }
+        setBackground(playable ? cardColor : new Color(147, 146, 142));
+    }
+
+    @Override
+    protected void paintComponent(Graphics graphics) {
+        Graphics2D g = (Graphics2D) graphics.create();
+        g.setPaint(new GradientPaint(0, 0, getBackground().brighter(),
+                0, getHeight(), getBackground()));
+        g.fillRoundRect(0, 0, getWidth(), getHeight(), 12, 12);
+        g.dispose();
+        super.paintComponent(graphics);
     }
 
     private String createHtml(Card card, boolean onBoard) {
-        String mana = onBoard ? "" : "<b style='color:#175f9f'>◉ "
-                + card.getManaCost() + " mana</b><br>";
+        String mana = onBoard ? "" : "<b style='color:#175f9f'>"
+                + card.getManaCost() + " MANA</b><br>";
         String stats;
         if (card instanceof MinionCard minion) {
-            stats = "<br><b>⚔ " + minion.getAttack()
-                    + " &nbsp;&nbsp; ♥ " + minion.getCurrentHealth() + "</b>";
+            stats = "<br><b>ATK " + minion.getAttack()
+                    + " &nbsp; <span style='color:#a82e2e'>HP "
+                    + minion.getCurrentHealth() + "</span></b>";
         } else {
             SpellCard spell = (SpellCard) card;
-            stats = "<br><b>✦ " + spell.getPower() + "</b>";
+            stats = "<br><b>" + (card.getType() == CardType.HEAL_SPELL ? "+" : "−")
+                    + spell.getPower() + " HP</b>";
         }
 
-        int width = onBoard ? 105 : 115;
-        return "<html><div style='width:" + width + "px;text-align:center'>"
+        int width = onBoard ? 82 : 91;
+        return "<html><div style='width:" + width + "px;text-align:center;font-size:9px'>"
                 + mana
-                + "<span style='font-size:8px'>" + card.getType().getDisplayName().toUpperCase() + "</span><br>"
-                + "<b style='font-size:12px'>" + card.getName() + "</b><br>"
-                + "<span style='font-size:9px'>" + card.getDescription() + "</span>"
+                + "<b style='font-size:10px'>" + AppTheme.escapeHtml(card.getName()) + "</b>"
+                + (onBoard ? "" : "<br><span style='font-size:8px'>"
+                + AppTheme.escapeHtml(card.getDescription()) + "</span>")
                 + stats
                 + "</div></html>";
     }

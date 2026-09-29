@@ -65,6 +65,10 @@ public class Player {
         return board;
     }
 
+    public boolean hasDefendingMinions() {
+        return board.stream().anyMatch(minion -> !minion.isDead());
+    }
+
     public int getDeckSize() {
         return deck.size();
     }

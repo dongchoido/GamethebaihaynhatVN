@@ -22,6 +22,7 @@ public class GameFrame extends JFrame {
     private final JLabel turnLabel = new JLabel();
     private final JLabel messageLabel = new JLabel();
     private final JLabel manaLabel = new JLabel();
+    private final JPanel manaCrystals = new JPanel(new FlowLayout(FlowLayout.RIGHT, 1, 0));
     private final JButton opponentHeroButton = new JButton();
     private final JLabel currentHeroLabel = new JLabel();
     private final JPanel opponentBoard = createCardRow();
@@ -33,6 +34,7 @@ public class GameFrame extends JFrame {
     private String selectedAttackerId;
     private boolean matchSaved;
     private boolean resultShown;
+    private Timer messageTimer;
 
     public GameFrame(GameState game, FileGameRepository repository) {
         this.game = game;
@@ -48,8 +50,8 @@ public class GameFrame extends JFrame {
     }
 
     private JPanel createContent() {
-        JPanel root = new JPanel(new BorderLayout(12, 12));
-        root.setBackground(AppTheme.BACKGROUND);
+        JPanel root = new GradientPanel("design/ArenaWood.jpg", 0.48f);
+        root.setLayout(new BorderLayout(12, 12));
         root.setBorder(new EmptyBorder(14, 18, 14, 18));
         root.add(createStatusBar(), BorderLayout.NORTH);
         root.add(createBattlefield(), BorderLayout.CENTER);
@@ -72,6 +74,7 @@ public class GameFrame extends JFrame {
 
         JPanel actionPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         actionPanel.setOpaque(false);
+        actionPanel.add(AppTheme.soundToggle());
 
         AppTheme.styleSecondaryButton(mainMenuButton);
         mainMenuButton.addActionListener(event -> returnToMainMenu());
@@ -87,55 +90,68 @@ public class GameFrame extends JFrame {
     }
 
     private JPanel createBattlefield() {
-        JPanel field = new JPanel();
-        field.setBackground(AppTheme.BACKGROUND);
-        field.setLayout(new BoxLayout(field, BoxLayout.Y_AXIS));
-
-        JPanel opponentHeroRow = new JPanel(new FlowLayout(FlowLayout.CENTER));
-        opponentHeroRow.setBackground(new Color(48, 28, 31));
+        JPanel field = new JPanel(new BorderLayout(0, 12));
+        field.setOpaque(false);
+        JPanel boards = new JPanel(new GridLayout(2, 1, 0, 12));
+        boards.setOpaque(false);
         styleHeroButton(opponentHeroButton, true);
         opponentHeroButton.addActionListener(event -> attackTarget(GameEngine.HERO_TARGET));
-        opponentHeroRow.add(opponentHeroButton);
-
-        JScrollPane opponentScroll = createHorizontalScroll(opponentBoard, new Color(42, 29, 32));
-
-        JLabel versus = new JLabel("—  VS  —", SwingConstants.CENTER);
-        versus.setForeground(AppTheme.GOLD);
-        versus.setFont(new Font("Georgia", Font.BOLD, 19));
-        versus.setAlignmentX(Component.CENTER_ALIGNMENT);
-
-        JScrollPane currentScroll = createHorizontalScroll(currentBoard, new Color(25, 39, 48));
-
-        JPanel currentHeroRow = new JPanel(new FlowLayout(FlowLayout.CENTER, 22, 8));
-        currentHeroRow.setBackground(new Color(25, 39, 48));
+        opponentHeroButton.setToolTipText("Chọn Minion của bạn, rồi bấm vào đây để tấn công Hero");
+        boards.add(createPlayerZone("ĐỐI PHƯƠNG", opponentHeroButton, opponentBoard));
         currentHeroLabel.setOpaque(true);
         currentHeroLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        currentHeroLabel.setPreferredSize(new Dimension(190, 76));
-        currentHeroLabel.setBackground(new Color(55, 47, 41));
+        currentHeroLabel.setPreferredSize(new Dimension(250, 108));
+        currentHeroLabel.setBackground(new Color(23, 41, 54));
         currentHeroLabel.setForeground(AppTheme.TEXT);
         currentHeroLabel.setBorder(AppTheme.roundedLine(AppTheme.GOLD_DARK, 2));
+        boards.add(createPlayerZone("HERO CỦA BẠN", currentHeroLabel, currentBoard));
+        field.add(boards, BorderLayout.CENTER);
 
-        manaLabel.setOpaque(true);
+        JPanel hand = new JPanel(new BorderLayout(0, 8));
+        hand.setOpaque(false);
+        JPanel handHeader = new JPanel(new BorderLayout());
+        handHeader.setOpaque(false);
+        JLabel hint = new JLabel("BÀI TRÊN TAY  ·  Bấm bài để chơi, chọn Minion để tấn công");
+        hint.setForeground(AppTheme.TEXT);
+        hint.setFont(hint.getFont().deriveFont(Font.BOLD, 12f));
+        handHeader.add(hint, BorderLayout.WEST);
+        JPanel mana = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        mana.setOpaque(false);
+        manaCrystals.setOpaque(false);
+        manaLabel.setFont(manaLabel.getFont().deriveFont(Font.BOLD, 14f));
         manaLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        manaLabel.setPreferredSize(new Dimension(85, 70));
-        manaLabel.setBackground(new Color(24, 103, 161));
         manaLabel.setForeground(Color.WHITE);
-        manaLabel.setBorder(BorderFactory.createLineBorder(new Color(105, 200, 247), 3, true));
-        currentHeroRow.add(currentHeroLabel);
-        currentHeroRow.add(manaLabel);
-
-        JScrollPane handScroll = createHorizontalScroll(handPanel, new Color(29, 31, 39));
+        mana.add(manaCrystals);
+        mana.add(manaLabel);
+        handHeader.add(mana, BorderLayout.EAST);
+        hand.add(handHeader, BorderLayout.NORTH);
+        JScrollPane handScroll = createHorizontalScroll(handPanel);
         handScroll.setPreferredSize(new Dimension(900, 220));
-
-        field.add(opponentHeroRow);
-        field.add(opponentScroll);
-        field.add(Box.createVerticalStrut(6));
-        field.add(versus);
-        field.add(Box.createVerticalStrut(6));
-        field.add(currentScroll);
-        field.add(currentHeroRow);
-        field.add(handScroll);
+        hand.add(handScroll, BorderLayout.CENTER);
+        field.add(hand, BorderLayout.SOUTH);
         return field;
+    }
+
+    private JPanel createPlayerZone(String title, JComponent hero, JPanel board) {
+        JPanel zone = new JPanel(new BorderLayout(14, 0));
+        zone.setOpaque(false);
+        JPanel heroPanel = new JPanel(new GridBagLayout());
+        heroPanel.setOpaque(false);
+        heroPanel.setPreferredSize(new Dimension(250, 130));
+        GridBagConstraints constraints = new GridBagConstraints();
+        constraints.gridx = 0;
+        constraints.gridy = 0;
+        constraints.insets = new Insets(0, 0, 8, 0);
+        JLabel caption = new JLabel(title);
+        caption.setForeground(AppTheme.GOLD);
+        caption.setFont(caption.getFont().deriveFont(Font.BOLD, 12f));
+        heroPanel.add(caption, constraints);
+        constraints.gridy = 1;
+        constraints.insets = new Insets(0, 0, 0, 0);
+        heroPanel.add(hero, constraints);
+        zone.add(heroPanel, BorderLayout.WEST);
+        zone.add(createHorizontalScroll(board), BorderLayout.CENTER);
+        return zone;
     }
 
     private JPanel createCardRow() {
@@ -144,23 +160,24 @@ public class GameFrame extends JFrame {
         return panel;
     }
 
-    private JScrollPane createHorizontalScroll(JPanel content, Color background) {
+    private JScrollPane createHorizontalScroll(JPanel content) {
         JPanel wrapper = new JPanel(new BorderLayout());
-        wrapper.setBackground(background);
+        wrapper.setOpaque(false);
         wrapper.add(content, BorderLayout.CENTER);
 
         JScrollPane scroll = new JScrollPane(wrapper,
                 ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER,
                 ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
-        scroll.setBorder(BorderFactory.createLineBorder(new Color(65, 63, 61), 1, true));
-        scroll.getViewport().setBackground(background);
+        scroll.setOpaque(false);
+        scroll.getViewport().setOpaque(false);
+        scroll.setBorder(BorderFactory.createLineBorder(new Color(112, 132, 150), 1, true));
         scroll.setPreferredSize(new Dimension(900, 182));
         scroll.getHorizontalScrollBar().setUnitIncrement(18);
         return scroll;
     }
 
     private void styleHeroButton(JButton button, boolean opponent) {
-        button.setPreferredSize(new Dimension(210, 78));
+        button.setPreferredSize(new Dimension(250, 108));
         button.setBackground(opponent ? new Color(92, 42, 40) : new Color(55, 47, 41));
         button.setForeground(AppTheme.TEXT);
         button.setFocusPainted(false);
@@ -174,12 +191,24 @@ public class GameFrame extends JFrame {
 
         turnLabel.setText("LƯỢT " + game.getTurnNumber());
         messageLabel.setText("Đến lượt " + current.getName());
-        manaLabel.setText("<html><div style='text-align:center'><b>"
-                + current.getCurrentMana() + "/" + current.getTotalMana()
-                + "</b><br><small>MANA</small></div></html>");
+        messageLabel.setForeground(AppTheme.TEXT);
+        manaLabel.setText(current.getCurrentMana() + "/" + current.getTotalMana() + " MANA");
+        manaCrystals.removeAll();
+        for (int i = 0; i < current.getTotalMana(); i++) {
+            boolean available = i < current.getCurrentMana();
+            JLabel crystal = new JLabel(GameAssets.icon(available
+                    ? "design/manacrystal.png" : "design/manacrystal_dark.png", 20, 24));
+            crystal.setToolTipText(available ? "Mana có thể dùng" : "Mana đã dùng");
+            manaCrystals.add(crystal);
+        }
 
         opponentHeroButton.setText(heroHtml(opponent));
+        opponentHeroButton.setIcon(GameAssets.heroPortrait(opponent.getDeckCode(), 64, 76));
+        opponentHeroButton.setToolTipText(opponent.hasDefendingMinions()
+                ? "Hero được bảo vệ: hãy hạ hết Minion phòng thủ trước"
+                : "Chọn Minion của bạn, rồi bấm vào đây để tấn công Hero");
         currentHeroLabel.setText(heroHtml(current));
+        currentHeroLabel.setIcon(GameAssets.heroPortrait(current.getDeckCode(), 64, 76));
         renderBoard(opponentBoard, opponent, false);
         renderBoard(currentBoard, current, true);
         renderHand(current);
@@ -194,9 +223,10 @@ public class GameFrame extends JFrame {
     }
 
     private String heroHtml(Player player) {
-        return "<html><div style='text-align:center'><b>" + player.getName()
+        return "<html><div style='width:100px;text-align:center'><b>"
+                + AppTheme.escapeHtml(player.getName())
                 + "</b><br><span style='color:#ff9a86'>♥ " + player.getHero().getHealth()
-                + "/30</span><br><small>" + player.getDeckName()
+                + "/30</span><br><small>" + AppTheme.escapeHtml(player.getDeckName())
                 + " · " + player.getDeckSize() + " lá</small></div></html>";
     }
 
@@ -246,9 +276,9 @@ public class GameFrame extends JFrame {
 
     private void resizeCardRow(JPanel panel, int cardCount, boolean onBoard) {
         int cardWidth = onBoard ? 144 : 157;
-        int height = onBoard ? 178 : 215;
+        int height = onBoard ? 142 : 202;
         panel.setPreferredSize(new Dimension(
-                Math.max(920, cardCount * cardWidth + 24),
+                Math.max(300, cardCount * cardWidth + 24),
                 height
         ));
     }
@@ -259,6 +289,7 @@ public class GameFrame extends JFrame {
                     ? "Đã triệu hồi " + card.getName()
                     : "Đã sử dụng " + card.getName();
             engine.playCard(game, game.getCurrentPlayerId(), card.getInstanceId());
+            SoundPlayer.play(SoundPlayer.Effect.CARD);
             selectedAttackerId = null;
             refreshGame();
             showTemporaryMessage(actionMessage, AppTheme.GREEN);
@@ -274,7 +305,9 @@ public class GameFrame extends JFrame {
         }
         selectedAttackerId = minion.getInstanceId();
         refreshGame();
-        messageLabel.setText("Chọn Hero hoặc Minion của đối phương");
+        messageLabel.setText(game.getOpponent().hasDefendingMinions()
+                ? "Chọn Minion phòng thủ của đối phương"
+                : "Chọn Hero của đối phương để tấn công");
         messageLabel.setForeground(AppTheme.BLUE);
     }
 
@@ -285,6 +318,7 @@ public class GameFrame extends JFrame {
         }
         try {
             engine.attack(game, game.getCurrentPlayerId(), selectedAttackerId, targetId);
+            SoundPlayer.play(SoundPlayer.Effect.ATTACK);
             selectedAttackerId = null;
             refreshGame();
             showTemporaryMessage("Đòn tấn công đã được thực hiện", AppTheme.RED);
@@ -297,6 +331,7 @@ public class GameFrame extends JFrame {
         try {
             String nextName = game.getOpponent().getName();
             engine.endTurn(game, game.getCurrentPlayerId());
+            SoundPlayer.play(SoundPlayer.Effect.END_TURN);
             selectedAttackerId = null;
             refreshGame();
             showTemporaryMessage("Đã chuyển lượt cho " + nextName, AppTheme.GOLD);
@@ -306,21 +341,29 @@ public class GameFrame extends JFrame {
     }
 
     private void showRuleError(String message) {
-        Toolkit.getDefaultToolkit().beep();
+        if (SoundPlayer.isEnabled()) {
+            Toolkit.getDefaultToolkit().beep();
+        }
         showTemporaryMessage(message, AppTheme.RED);
     }
 
     private void showTemporaryMessage(String message, Color color) {
+        if (game.getStatus() == GameStatus.FINISHED) {
+            return;
+        }
+        if (messageTimer != null) {
+            messageTimer.stop();
+        }
         messageLabel.setText(message);
         messageLabel.setForeground(color);
-        Timer timer = new Timer(1800, event -> {
+        messageTimer = new Timer(1800, event -> {
             messageLabel.setForeground(AppTheme.TEXT);
             if (game.getStatus() == GameStatus.IN_PROGRESS) {
                 messageLabel.setText("Đến lượt " + game.getCurrentPlayer().getName());
             }
         });
-        timer.setRepeats(false);
-        timer.start();
+        messageTimer.setRepeats(false);
+        messageTimer.start();
     }
 
     private void checkFinished() {
@@ -335,10 +378,19 @@ public class GameFrame extends JFrame {
             return;
         }
         resultShown = true;
+        if (messageTimer != null) {
+            messageTimer.stop();
+        }
+        messageLabel.setText("Chiến thắng: " + game.getWinnerName());
+        messageLabel.setForeground(AppTheme.GOLD);
+        SoundPlayer.play(SoundPlayer.Effect.VICTORY);
         SwingUtilities.invokeLater(this::showResultDialog);
     }
 
     private void returnToMainMenu() {
+        if (messageTimer != null) {
+            messageTimer.stop();
+        }
         new LobbyFrame(repository).setVisible(true);
         dispose();
     }

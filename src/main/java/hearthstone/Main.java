@@ -2,6 +2,7 @@ package hearthstone;
 
 import hearthstone.persistence.FileGameRepository;
 import hearthstone.ui.LobbyFrame;
+import hearthstone.ui.SoundPlayer;
 
 import javax.swing.*;
 import java.awt.*;
@@ -13,6 +14,7 @@ public class Main {
             configureLookAndFeel();
             LobbyFrame lobby = new LobbyFrame(new FileGameRepository());
             lobby.setVisible(true);
+            SoundPlayer.play(SoundPlayer.Effect.START);
         });
     }
 

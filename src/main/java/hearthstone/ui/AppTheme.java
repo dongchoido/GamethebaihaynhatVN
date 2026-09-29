@@ -44,4 +44,31 @@ public final class AppTheme {
         button.setBorder(roundedLine(new Color(90, 91, 98), 1));
         button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
     }
+
+    public static JToggleButton soundToggle() {
+        JToggleButton toggle = new JToggleButton("ÂM THANH: BẬT", SoundPlayer.isEnabled());
+        styleSecondaryButton(toggle);
+        toggle.setText(toggle.isSelected() ? "ÂM THANH: BẬT" : "ÂM THANH: TẮT");
+        toggle.setToolTipText("Bật hoặc tắt hiệu ứng âm thanh");
+        toggle.addActionListener(event -> {
+            SoundPlayer.setEnabled(toggle.isSelected());
+            toggle.setText(toggle.isSelected() ? "ÂM THANH: BẬT" : "ÂM THANH: TẮT");
+        });
+        return toggle;
+    }
+
+    public static void styleField(JComponent field) {
+        field.setBackground(PANEL_LIGHT);
+        field.setForeground(TEXT);
+        field.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        field.setBorder(roundedLine(new Color(82, 99, 118), 1));
+        if (field instanceof JTextField text) {
+            text.setCaretColor(GOLD);
+        }
+    }
+
+    public static String escapeHtml(String text) {
+        return text.replace("&", "&amp;").replace("<", "&lt;")
+                .replace(">", "&gt;").replace("\"", "&quot;");
+    }
 }

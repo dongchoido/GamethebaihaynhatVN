@@ -19,6 +19,8 @@ public class LobbyFrame extends JFrame {
     private final JComboBox<DeckOption> player1Deck;
     private final JComboBox<DeckOption> player2Deck;
     private final JLabel deckDescription = new JLabel(" ");
+    private final JLabel player1Preview = new JLabel();
+    private final JLabel player2Preview = new JLabel();
 
     public LobbyFrame(FileGameRepository repository) {
         this.repository = repository;
@@ -31,17 +33,14 @@ public class LobbyFrame extends JFrame {
 
         setTitle("Hearthstone Swing - Lobby");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setMinimumSize(new Dimension(900, 620));
-        setSize(980, 680);
+        setMinimumSize(new Dimension(960, 700));
+        setSize(1040, 740);
         setLocationRelativeTo(null);
         setContentPane(createContent());
     }
 
     private JPanel createContent() {
-        GradientPanel root = new GradientPanel(
-                new Color(28, 22, 24),
-                new Color(16, 29, 40)
-        );
+        GradientPanel root = new GradientPanel("design/StartBG.jpg", 0.64f);
         root.setLayout(new BorderLayout(30, 30));
         root.setBorder(new EmptyBorder(36, 50, 42, 50));
 
@@ -68,7 +67,11 @@ public class LobbyFrame extends JFrame {
         AppTheme.styleSecondaryButton(historyButton);
         historyButton.addActionListener(event ->
                 new HistoryDialog(this, repository).setVisible(true));
-        header.add(historyButton, BorderLayout.EAST);
+        JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        actions.setOpaque(false);
+        actions.add(AppTheme.soundToggle());
+        actions.add(historyButton);
+        header.add(actions, BorderLayout.EAST);
         return header;
     }
 
@@ -76,18 +79,18 @@ public class LobbyFrame extends JFrame {
         JPanel panel = new JPanel();
         panel.setOpaque(false);
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-        panel.setBorder(new EmptyBorder(55, 0, 30, 20));
+        panel.setBorder(new EmptyBorder(28, 0, 16, 10));
 
-        JLabel eyebrow = new JLabel("JAVA SWING · OFFLINE DUEL");
+        JLabel eyebrow = new JLabel("HAI NGƯỜI CHƠI · ĐẤU OFFLINE");
         eyebrow.setForeground(AppTheme.GOLD);
         eyebrow.setFont(eyebrow.getFont().deriveFont(Font.BOLD, 12f));
 
         JLabel title = new JLabel("<html>Đấu thẻ bài<br>trên cùng một máy</html>");
         title.setForeground(AppTheme.TEXT);
-        title.setFont(new Font("Georgia", Font.BOLD, 40));
+        title.setFont(new Font("Segoe UI", Font.BOLD, 34));
 
         JLabel description = new JLabel(
-                "<html><div style='width:360px'>Hai người thay phiên chơi. "
+                "<html><div style='width:250px'>Hai người thay phiên chơi. "
                         + "Triệu hồi Minion, dùng Spell và hạ Hero đối phương về 0 máu.</div></html>");
         description.setForeground(AppTheme.MUTED);
         description.setFont(description.getFont().deriveFont(15f));
@@ -97,34 +100,51 @@ public class LobbyFrame extends JFrame {
         panel.add(title);
         panel.add(Box.createVerticalStrut(24));
         panel.add(description);
-        panel.add(Box.createVerticalStrut(32));
-        panel.add(featureLabel("✓ 3 loại Card"));
-        panel.add(Box.createVerticalStrut(10));
-        panel.add(featureLabel("✓ Turn, Mana, Attack, Win/Lose"));
-        panel.add(Box.createVerticalStrut(10));
-        panel.add(featureLabel("✓ Lưu dữ liệu cục bộ"));
+        panel.add(Box.createVerticalStrut(26));
+        JPanel heroes = new JPanel(new GridLayout(1, 2, 14, 0));
+        heroes.setOpaque(false);
+        heroes.setAlignmentX(Component.LEFT_ALIGNMENT);
+        heroes.setMaximumSize(new Dimension(360, 138));
+        for (JLabel preview : new JLabel[]{player1Preview, player2Preview}) {
+            preview.setHorizontalAlignment(SwingConstants.CENTER);
+            preview.setHorizontalTextPosition(SwingConstants.CENTER);
+            preview.setVerticalTextPosition(SwingConstants.BOTTOM);
+            preview.setIconTextGap(8);
+            preview.setForeground(AppTheme.TEXT);
+            preview.setOpaque(true);
+            preview.setBackground(AppTheme.PANEL);
+            preview.setBorder(AppTheme.roundedLine(AppTheme.GOLD_DARK, 1));
+            heroes.add(preview);
+        }
+        panel.add(heroes);
+        panel.add(Box.createVerticalStrut(20));
+        panel.add(featureLabel("MINION · PHÉP SÁT THƯƠNG · HỒI MÁU"));
+        panel.add(Box.createVerticalStrut(8));
+        panel.add(featureLabel("30 máu · 10 mana · 7 Minion trên bàn"));
         return panel;
     }
 
     private JLabel featureLabel(String text) {
         JLabel label = new JLabel(text);
         label.setForeground(AppTheme.TEXT);
-        label.setFont(label.getFont().deriveFont(Font.BOLD, 14f));
+        label.setFont(label.getFont().deriveFont(Font.BOLD, 12f));
         return label;
     }
 
     private JPanel createForm() {
         JPanel form = new JPanel(new GridBagLayout());
-        form.setBackground(new Color(31, 34, 43, 235));
+        form.setBackground(new Color(24, 33, 46));
         form.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(new Color(91, 75, 57), 1, true),
                 new EmptyBorder(24, 28, 24, 28)
         ));
 
-        player1Field.setFont(player1Field.getFont().deriveFont(15f));
-        player2Field.setFont(player2Field.getFont().deriveFont(15f));
-        player1Deck.addActionListener(event -> updateDeckDescription());
-        player2Deck.addActionListener(event -> updateDeckDescription());
+        AppTheme.styleField(player1Field);
+        AppTheme.styleField(player2Field);
+        AppTheme.styleField(player1Deck);
+        AppTheme.styleField(player2Deck);
+        player1Deck.addActionListener(event -> deckSelected());
+        player2Deck.addActionListener(event -> deckSelected());
         deckDescription.setForeground(AppTheme.MUTED);
 
         GridBagConstraints constraints = new GridBagConstraints();
@@ -176,8 +196,23 @@ public class LobbyFrame extends JFrame {
     private void updateDeckDescription() {
         DeckOption deck = (DeckOption) player1Deck.getSelectedItem();
         if (deck != null) {
-            deckDescription.setText("<html><div style='width:270px'>"
+            deckDescription.setText("<html><div style='width:220px'>"
                     + deck.description() + "</div></html>");
+        }
+        updateHeroPreview(player1Preview, (DeckOption) player1Deck.getSelectedItem());
+        updateHeroPreview(player2Preview, (DeckOption) player2Deck.getSelectedItem());
+    }
+
+    private void deckSelected() {
+        updateDeckDescription();
+        SoundPlayer.play(SoundPlayer.Effect.SELECT);
+    }
+
+    private void updateHeroPreview(JLabel preview, DeckOption deck) {
+        if (deck != null) {
+            preview.setIcon(GameAssets.heroPortrait(deck.code(), 130, 76));
+            preview.setText(deck.name());
+            preview.setToolTipText(deck.description());
         }
     }
 
@@ -213,6 +248,7 @@ public class LobbyFrame extends JFrame {
             GameState game = new GameState(player1, player2);
 
             new GameFrame(game, repository).setVisible(true);
+            SoundPlayer.play(SoundPlayer.Effect.PLAY);
             dispose();
         } catch (RuntimeException exception) {
             showError(exception.getMessage());
