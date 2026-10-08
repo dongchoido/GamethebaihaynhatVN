@@ -10,7 +10,7 @@ import java.util.UUID;
 
 public class Player {
 
-    public static final int MAX_HAND_SIZE = 10;
+    public static final int MAX_HAND_SIZE = 7;
     public static final int MAX_BOARD_SIZE = 7;
     public static final int MAX_MANA = 10;
 
@@ -73,6 +73,10 @@ public class Player {
         return deck.size();
     }
 
+    public boolean hasNoCards() {
+        return deck.isEmpty() && hand.isEmpty();
+    }
+
     public int getTotalMana() {
         return totalMana;
     }
@@ -83,7 +87,6 @@ public class Player {
 
     public void drawCard() {
         if (deck.isEmpty()) {
-            hero.takeDamage(1);
             return;
         }
 

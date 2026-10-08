@@ -114,5 +114,26 @@ chỉ cần thay lớp `FileGameRepository`; game engine và Swing UI không ph�
 - Minion vừa được triệu hồi vẫn bảo vệ Hero, dù chưa thể tấn công.
 - Damage Spell gây sát thương trực tiếp lên Hero đối phương.
 - Heal Spell hồi máu cho Hero hiện tại.
-- Bộ bài hết thì mỗi lần rút sẽ mất 1 máu.
+- Tay bài tối đa 7 lá. Khi tay đã đầy, lá được rút tiếp theo bị bỏ.
+- Chỉ thua vì hết bài khi cả deck và bài trên tay đều hết, kể cả khi còn Minion trên bàn.
+- Deck trống nhưng tay còn bài, hoặc tay trống nhưng deck còn bài, thì vẫn tiếp tục chơi.
+- Rút từ deck trống không gây mất máu.
+- Lá cuối vẫn được xử lý hiệu ứng trước khi kiểm tra hết bài. Nếu lá đó hạ Hero đối phương, người đánh lá bài vẫn thắng.
+- Mỗi deck cần có ít nhất 1 lá để bắt đầu trận; deck rỗng là cấu hình không hợp lệ.
 - Hero về 0 máu thì thua.
+
+## Kiểm tra tự động
+
+Trong PowerShell, tại thư mục project (JDK 17+ có trong PATH):
+
+```powershell
+.\run-tests.ps1
+```
+
+Script biên dịch toàn bộ code và chạy kiểm tra luật chơi, phòng thủ, hết bài,
+giới hạn 7 lá, giao diện kết thúc trận và lưu dữ liệu. Dữ liệu thử được tạo riêng,
+không ghi vào thư mục `data` của người chơi.
+
+`ExhaustionSmokeTest` kiểm tra 18 nhóm tình huống, bao gồm 256 trận mô phỏng
+với kích thước deck khác nhau. `EndGameSmokeTest` cần môi trường desktop để tạo
+Swing frame ẩn; kiểm tra khóa nút sau trận, lý do kết thúc và tránh lưu trùng.

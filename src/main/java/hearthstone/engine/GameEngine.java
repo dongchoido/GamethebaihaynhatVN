@@ -1,12 +1,14 @@
 package hearthstone.engine;
 
-import hearthstone.model.card.Card;
-import hearthstone.model.card.CardType;
-import hearthstone.model.card.MinionCard;
-import hearthstone.model.card.SpellCard;
-import hearthstone.model.game.GameState;
-import hearthstone.model.game.GameStatus;
-import hearthstone.model.game.Player;
+import hearthstone.model.card.*;
+import hearthstone.model.game.*;
+//import hearthstone.model.card.Card;
+////import hearthstone.model.card.CardType;
+////import hearthstone.model.card.MinionCard;
+////import hearthstone.model.card.SpellCard;
+//import hearthstone.model.game.GameState;
+//import hearthstone.model.game.GameStatus;
+//import hearthstone.model.game.Player;
 
 public class GameEngine {
 
@@ -71,6 +73,7 @@ public class GameEngine {
     }
 
     private Player requireCurrentPlayer(GameState game, String playerId) {
+        cleanAndCheckWinner(game);
         if (game.getStatus() == GameStatus.FINISHED) {
             throw new GameRuleException("Trận đấu đã kết thúc");
         }
@@ -89,13 +92,20 @@ public class GameEngine {
     }
 
     private void cleanAndCheckWinner(GameState game) {
+        if (game.getStatus() == GameStatus.FINISHED) {
+            return;
+        }
         game.getPlayer1().removeDeadMinions();
         game.getPlayer2().removeDeadMinions();
 
         if (game.getPlayer1().getHero().isDead()) {
-            game.finish(game.getPlayer2().getName());
+            game.finish(game.getPlayer2().getName(), game.getPlayer1().getName() + " đã hết máu");
         } else if (game.getPlayer2().getHero().isDead()) {
-            game.finish(game.getPlayer1().getName());
+            game.finish(game.getPlayer1().getName(), game.getPlayer2().getName() + " đã hết máu");
+        } else if (game.getPlayer1().hasNoCards()) {
+            game.finish(game.getPlayer2().getName(), game.getPlayer1().getName() + " đã hết bài trong deck và trên tay");
+        } else if (game.getPlayer2().hasNoCards()) {
+            game.finish(game.getPlayer1().getName(), game.getPlayer2().getName() + " đã hết bài trong deck và trên tay");
         }
     }
 }

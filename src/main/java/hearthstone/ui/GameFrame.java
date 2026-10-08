@@ -111,7 +111,7 @@ public class GameFrame extends JFrame {
         hand.setOpaque(false);
         JPanel handHeader = new JPanel(new BorderLayout());
         handHeader.setOpaque(false);
-        JLabel hint = new JLabel("BÀI TRÊN TAY  ·  Bấm bài để chơi, chọn Minion để tấn công");
+        JLabel hint = new JLabel("BÀI TRÊN TAY (TỐI ĐA " + Player.MAX_HAND_SIZE + ")  ·  Bấm bài để chơi");
         hint.setForeground(AppTheme.TEXT);
         hint.setFont(hint.getFont().deriveFont(Font.BOLD, 12f));
         handHeader.add(hint, BorderLayout.WEST);
@@ -214,6 +214,7 @@ public class GameFrame extends JFrame {
         renderHand(current);
 
         boolean inProgress = game.getStatus() == GameStatus.IN_PROGRESS;
+        opponentHeroButton.setEnabled(inProgress);
         endTurnButton.setEnabled(inProgress);
         endTurnButton.setVisible(inProgress);
         mainMenuButton.setVisible(!inProgress);
@@ -242,6 +243,7 @@ public class GameFrame extends JFrame {
 
         for (MinionCard minion : owner.getBoard()) {
             CardButton button = new CardButton(minion, true);
+            button.setEnabled(game.getStatus() == GameStatus.IN_PROGRESS);
             if (ownBoard) {
                 button.setPlayable(minion.canAttack());
                 button.setSelectedCard(minion.getInstanceId().equals(selectedAttackerId));
@@ -266,6 +268,7 @@ public class GameFrame extends JFrame {
 
         for (Card card : player.getHand()) {
             CardButton button = new CardButton(card, false);
+            button.setEnabled(game.getStatus() == GameStatus.IN_PROGRESS);
             boolean playable = player.hasEnoughMana(card.getManaCost());
             button.setPlayable(playable);
             button.addActionListener(event -> playCard(card));
@@ -299,6 +302,9 @@ public class GameFrame extends JFrame {
     }
 
     private void selectAttacker(MinionCard minion) {
+        if (game.getStatus() != GameStatus.IN_PROGRESS) {
+            return;
+        }
         if (!minion.canAttack()) {
             showRuleError("Minion vừa được triệu hồi hoặc đã tấn công trong lượt này");
             return;
@@ -374,6 +380,9 @@ public class GameFrame extends JFrame {
             repository.recordMatch(game);
             matchSaved = true;
         }
+        messageLabel.setText("Chiến thắng: " + game.getWinnerName());
+        messageLabel.setForeground(AppTheme.GOLD);
+        messageLabel.setToolTipText(game.getEndReason());
         if (resultShown) {
             return;
         }
@@ -381,8 +390,6 @@ public class GameFrame extends JFrame {
         if (messageTimer != null) {
             messageTimer.stop();
         }
-        messageLabel.setText("Chiến thắng: " + game.getWinnerName());
-        messageLabel.setForeground(AppTheme.GOLD);
         SoundPlayer.play(SoundPlayer.Effect.VICTORY);
         SwingUtilities.invokeLater(this::showResultDialog);
     }
@@ -400,6 +407,7 @@ public class GameFrame extends JFrame {
         int choice = JOptionPane.showOptionDialog(
                 this,
                 "Người chiến thắng: " + game.getWinnerName()
+                        + (game.getEndReason().isBlank() ? "" : "\nLý do: " + game.getEndReason())
                         + "\nSố lượt: " + game.getTurnNumber(),
                 "TRẬN ĐẤU KẾT THÚC",
                 JOptionPane.YES_NO_OPTION,
