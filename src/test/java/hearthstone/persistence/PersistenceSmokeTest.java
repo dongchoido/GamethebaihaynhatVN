@@ -6,6 +6,7 @@ import hearthstone.model.game.GameState;
 import hearthstone.model.game.Player;
 
 import java.nio.file.Path;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -29,6 +30,23 @@ public class PersistenceSmokeTest {
 
         if (repository.getUsers().size() != 2 || repository.getMatches().size() != 1) {
             throw new AssertionError("Persistence smoke test failed");
+        }
+        // The EXE supplies an absolute data path, independent of its working directory.
+        String previousPath = System.getProperty("hearthstone.dataDir");
+        Path configuredPath = Path.of(args[0]).resolve("configured data").toAbsolutePath();
+        try {
+            System.setProperty("hearthstone.dataDir", configuredPath.toString());
+            new FileGameRepository().ensureUser("Packaged player");
+            if (!Files.isRegularFile(configuredPath.resolve("users.tsv"))
+                    || new FileGameRepository().getUsers().size() != 1) {
+                throw new AssertionError("Configured data directory was not used");
+            }
+        } finally {
+            if (previousPath == null) {
+                System.clearProperty("hearthstone.dataDir");
+            } else {
+                System.setProperty("hearthstone.dataDir", previousPath);
+            }
         }
         System.out.println("PERSISTENCE_SMOKE_TEST_OK");
     }

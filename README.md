@@ -26,10 +26,48 @@ Project **không dùng**:
 - Âm thanh khi mở game, chọn deck, bắt đầu trận, đánh bài, tấn công, kết thúc lượt và chiến thắng.
 - Nút bật/tắt âm thanh ở lobby và bàn đấu, áp dụng cả tiếng báo lỗi và giữ lựa chọn khi chuyển màn hình.
 
-## Yêu cầu
+## Mở game bằng file EXE trên Windows
+
+1. Giải nén toàn bộ `HearthstoneSwing-Windows.zip` vào đường dẫn có quyền ghi và **không dấu**, ví dụ `C:\Games`.
+2. Mở thư mục `HearthstoneSwing`, bấm đúp `HearthstoneSwing.exe`.
+3. Không cần NetBeans, Maven hoặc cài Java riêng. Java, ảnh và âm thanh đã được đóng gói.
+
+Giữ nguyên hai thư mục `app` và `runtime` cạnh file EXE. Khi gửi game cho người khác,
+gửi file ZIP hoặc cả thư mục game; không gửi riêng file EXE. Có thể tạo shortcut ra Desktop.
+Bản chạy được tạo theo kiến trúc của JDK đóng gói; bản tạo trên máy này là Windows x64.
+Java đi kèm bản hiện tại đã gặp lỗi khởi động tại đường dẫn có dấu tiếng Việt khi kiểm tra.
+Vì vậy, dùng đường dẫn không dấu cho bản này; khoảng trắng trong đường dẫn vẫn được hỗ trợ.
+
+Lịch sử của bản EXE nằm trong `data` cạnh file EXE, kể cả khi mở bằng shortcut.
+Mỗi bản đóng gói mới không chứa lịch sử của người phát triển. Để chuyển dữ liệu cũ,
+đóng game rồi chép thư mục `data` từ bản cũ (hoặc từ project) sang cạnh EXE của bản mới.
+
+## Tạo lại bản EXE sau khi sửa code
+
+Trên Windows cần **JDK đầy đủ từ 17 trở lên**, có công cụ `jpackage`. Không cần Maven,
+NetBeans hoặc WiX để tạo bản chạy dạng thư mục này.
+
+Mở PowerShell tại thư mục chứa `pom.xml`, chạy:
+
+```powershell
+.\build-windows.ps1
+```
+
+Nếu cần chỉ định JDK:
+
+```powershell
+.\build-windows.ps1 -JdkPath 'C:\Program Files\Java\jdk-26.0.2.1'
+```
+
+Script biên dịch code, gom tài nguyên vào JAR, tạo EXE với Java đi kèm và nén ZIP.
+Kết quả nằm trong `dist/windows-<thời điểm>-<mã bản dựng>/`. Mỗi lần chạy tạo thư mục
+mới, không xóa bản cũ hay lịch sử của người chơi. Chi tiết công cụ đóng gói:
+[Oracle jpackage](https://docs.oracle.com/en/java/javase/26/jpackage/packaging-overview.html).
+
+## Yêu cầu khi phát triển mã nguồn
 
 - JDK 17 trở lên.
-- Apache NetBeans.
+- Apache NetBeans nếu muốn sử dụng IDE; có thể dùng JDK trực tiếp hoặc Maven.
 
 ## Mở bằng NetBeans
 
@@ -93,7 +131,8 @@ resources để dùng sau; game hiện tại chưa có luật Hero Power.
 
 ## Dữ liệu lưu ở đâu?
 
-Sau khi chạy, project tự tạo:
+Khi chạy bằng NetBeans hoặc terminal, project tự tạo `data` trong thư mục làm việc.
+Khi mở bản EXE, `data` nằm cạnh EXE nhờ cấu hình `hearthstone.dataDir` của bộ đóng gói:
 
 ```text
 data/

@@ -81,17 +81,16 @@ public class LobbyFrame extends JFrame {
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
         panel.setBorder(new EmptyBorder(28, 0, 16, 10));
 
-        JLabel eyebrow = new JLabel("HAI NGƯỜI CHƠI · ĐẤU OFFLINE");
+        JLabel eyebrow = new JLabel("");
         eyebrow.setForeground(AppTheme.GOLD);
         eyebrow.setFont(eyebrow.getFont().deriveFont(Font.BOLD, 12f));
 
-        JLabel title = new JLabel("<html>Đấu thẻ bài<br>trên cùng một máy</html>");
+        JLabel title = new JLabel("<html></html>");
         title.setForeground(AppTheme.TEXT);
         title.setFont(new Font("Segoe UI", Font.BOLD, 34));
 
         JLabel description = new JLabel(
-                "<html><div style='width:250px'>Hai người thay phiên chơi. "
-                        + "Triệu hồi Minion, dùng Spell và hạ Hero đối phương về 0 máu.</div></html>");
+                "<html></html>");
         description.setForeground(AppTheme.MUTED);
         description.setFont(description.getFont().deriveFont(15f));
 
@@ -118,9 +117,9 @@ public class LobbyFrame extends JFrame {
         }
         panel.add(heroes);
         panel.add(Box.createVerticalStrut(20));
-        panel.add(featureLabel("MINION · PHÉP SÁT THƯƠNG · HỒI MÁU"));
+        panel.add(featureLabel(""));
         panel.add(Box.createVerticalStrut(8));
-        panel.add(featureLabel("30 máu · 10 mana · 7 Minion trên bàn"));
+        panel.add(featureLabel("30 máu · 10 mana · Tối đa 7 Minion trên tay"));
         return panel;
     }
 

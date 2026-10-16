@@ -35,8 +35,8 @@ public class CardButton extends JButton {
         setContentAreaFilled(false);
         setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         cardColor = card.getType() == CardType.MINION
-                ? new Color(224, 192, 133)
-                : new Color(203, 189, 223);
+                ? new Color(235, 181, 86)
+                : new Color(235, 181, 86);
         setBackground(cardColor);
         setForeground(new Color(45, 33, 24));
 
@@ -76,7 +76,7 @@ public class CardButton extends JButton {
     }
 
     public void setPlayable(boolean playable) {
-        setBackground(playable ? cardColor : new Color(147, 146, 142));
+        setBackground(playable ? cardColor : new Color(235, 181, 86));
     }
 
     @Override

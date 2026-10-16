@@ -18,7 +18,8 @@ $tests = @(
     'hearthstone.engine.EngineSmokeTest',
     'hearthstone.engine.DefenseRuleSmokeTest',
     'hearthstone.engine.ExhaustionSmokeTest',
-    'hearthstone.ui.EndGameSmokeTest'
+    'hearthstone.ui.EndGameSmokeTest',
+    'hearthstone.ui.FixedPlayerPositionSmokeTest'
 )
 foreach ($test in $tests) {
     & java -cp $classPath $test

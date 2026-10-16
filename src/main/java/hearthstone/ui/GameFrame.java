@@ -23,10 +23,10 @@ public class GameFrame extends JFrame {
     private final JLabel messageLabel = new JLabel();
     private final JLabel manaLabel = new JLabel();
     private final JPanel manaCrystals = new JPanel(new FlowLayout(FlowLayout.RIGHT, 1, 0));
-    private final JButton opponentHeroButton = new JButton();
-    private final JLabel currentHeroLabel = new JLabel();
-    private final JPanel opponentBoard = createCardRow();
-    private final JPanel currentBoard = createCardRow();
+    private final JButton player1HeroButton = new JButton();
+    private final JButton player2HeroButton = new JButton();
+    private final JPanel player1Board = createCardRow();
+    private final JPanel player2Board = createCardRow();
     private final JPanel handPanel = createCardRow();
     private final JButton endTurnButton = new JButton("KẾT THÚC LƯỢT");
     private final JButton mainMenuButton = new JButton("VỀ MÀN HÌNH CHÍNH");
@@ -35,6 +35,8 @@ public class GameFrame extends JFrame {
     private boolean matchSaved;
     private boolean resultShown;
     private Timer messageTimer;
+    
+    private  boolean check = false;
 
     public GameFrame(GameState game, FileGameRepository repository) {
         this.game = game;
@@ -94,17 +96,11 @@ public class GameFrame extends JFrame {
         field.setOpaque(false);
         JPanel boards = new JPanel(new GridLayout(2, 1, 0, 12));
         boards.setOpaque(false);
-        styleHeroButton(opponentHeroButton, true);
-        opponentHeroButton.addActionListener(event -> attackTarget(GameEngine.HERO_TARGET));
-        opponentHeroButton.setToolTipText("Chọn Minion của bạn, rồi bấm vào đây để tấn công Hero");
-        boards.add(createPlayerZone("ĐỐI PHƯƠNG", opponentHeroButton, opponentBoard));
-        currentHeroLabel.setOpaque(true);
-        currentHeroLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        currentHeroLabel.setPreferredSize(new Dimension(250, 108));
-        currentHeroLabel.setBackground(new Color(23, 41, 54));
-        currentHeroLabel.setForeground(AppTheme.TEXT);
-        currentHeroLabel.setBorder(AppTheme.roundedLine(AppTheme.GOLD_DARK, 2));
-        boards.add(createPlayerZone("HERO CỦA BẠN", currentHeroLabel, currentBoard));
+        player1HeroButton.addActionListener(event -> attackHero(game.getPlayer1()));
+        player2HeroButton.addActionListener(event -> attackHero(game.getPlayer2()));
+        // Giữ nguyên vị trí như lúc bắt đầu: người chơi 2 ở trên, người chơi 1 ở dưới.
+        boards.add(createPlayerZone("NGƯỜI CHƠI 2", player2HeroButton, player2Board));
+        boards.add(createPlayerZone("NGƯỜI CHƠI 1", player1HeroButton, player1Board));
         field.add(boards, BorderLayout.CENTER);
 
         JPanel hand = new JPanel(new BorderLayout(0, 8));
@@ -178,7 +174,7 @@ public class GameFrame extends JFrame {
 
     private void styleHeroButton(JButton button, boolean opponent) {
         button.setPreferredSize(new Dimension(250, 108));
-        button.setBackground(opponent ? new Color(92, 42, 40) : new Color(55, 47, 41));
+        button.setBackground(opponent ? new Color(92, 42, 40) : new Color(23, 41, 54));
         button.setForeground(AppTheme.TEXT);
         button.setFocusPainted(false);
         button.setBorder(AppTheme.roundedLine(opponent ? AppTheme.RED : AppTheme.GOLD_DARK, 2));
@@ -187,7 +183,6 @@ public class GameFrame extends JFrame {
 
     private void refreshGame() {
         Player current = game.getCurrentPlayer();
-        Player opponent = game.getOpponent();
 
         turnLabel.setText("LƯỢT " + game.getTurnNumber());
         messageLabel.setText("Đến lượt " + current.getName());
@@ -201,26 +196,35 @@ public class GameFrame extends JFrame {
             crystal.setToolTipText(available ? "Mana có thể dùng" : "Mana đã dùng");
             manaCrystals.add(crystal);
         }
-
-        opponentHeroButton.setText(heroHtml(opponent));
-        opponentHeroButton.setIcon(GameAssets.heroPortrait(opponent.getDeckCode(), 64, 76));
-        opponentHeroButton.setToolTipText(opponent.hasDefendingMinions()
-                ? "Hero được bảo vệ: hãy hạ hết Minion phòng thủ trước"
-                : "Chọn Minion của bạn, rồi bấm vào đây để tấn công Hero");
-        currentHeroLabel.setText(heroHtml(current));
-        currentHeroLabel.setIcon(GameAssets.heroPortrait(current.getDeckCode(), 64, 76));
-        renderBoard(opponentBoard, opponent, false);
-        renderBoard(currentBoard, current, true);
+      //  if(!check)
+        {
+            check = true;
+            refreshHero(player1HeroButton, game.getPlayer1());
+            refreshHero(player2HeroButton, game.getPlayer2());
+        }
+        renderBoard(player1Board, game.getPlayer1(), current == game.getPlayer1());
+        renderBoard(player2Board, game.getPlayer2(), current == game.getPlayer2());
         renderHand(current);
 
         boolean inProgress = game.getStatus() == GameStatus.IN_PROGRESS;
-        opponentHeroButton.setEnabled(inProgress);
         endTurnButton.setEnabled(inProgress);
         endTurnButton.setVisible(inProgress);
         mainMenuButton.setVisible(!inProgress);
         revalidate();
         repaint();
         checkFinished();
+    }
+
+    private void refreshHero(JButton button, Player player) {
+        boolean opponent = player != game.getCurrentPlayer();
+        button.setText(heroHtml(player));
+        button.setIcon(GameAssets.heroPortrait(player.getDeckCode(), 64, 76));
+        styleHeroButton(button, opponent);
+        button.setEnabled(game.getStatus() == GameStatus.IN_PROGRESS);
+        button.setToolTipText(!opponent ? "Hero của người đang đến lượt"
+                : player.hasDefendingMinions()
+                ? "Hero được bảo vệ: hãy hạ hết Minion phòng thủ trước"
+                : "Chọn Minion của bạn, rồi bấm vào đây để tấn công Hero");
     }
 
     private String heroHtml(Player player) {
@@ -315,6 +319,12 @@ public class GameFrame extends JFrame {
                 ? "Chọn Minion phòng thủ của đối phương"
                 : "Chọn Hero của đối phương để tấn công");
         messageLabel.setForeground(AppTheme.BLUE);
+    }
+
+    private void attackHero(Player target) {
+        if (target == game.getOpponent()) {
+            attackTarget(GameEngine.HERO_TARGET);
+        }
     }
 
     private void attackTarget(String targetId) {

@@ -12,7 +12,6 @@ import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
 
-/** Images are loaded from the classpath, so they also work inside a JAR. */
 public final class GameAssets {
     private static final Map<String, BufferedImage> IMAGES = new HashMap<>();
     private static final Map<String, ImageIcon> ICONS = new HashMap<>();
@@ -40,7 +39,6 @@ public final class GameAssets {
                     loaded = ImageIO.read(resource);
                 }
             } catch (IOException ignored) {
-                // The text-based interface remains usable if an asset is missing.
             }
             IMAGES.put(path, loaded);
         }
@@ -76,7 +74,6 @@ public final class GameAssets {
             return null;
         }
         if (cropArt) {
-            // Skip the printed name, mana and stats: the game supplies its own values.
             double left = portrait ? 0.27 : 0.22;
             source = source.getSubimage((int) (source.getWidth() * left),
                     (int) (source.getHeight() * 0.12),

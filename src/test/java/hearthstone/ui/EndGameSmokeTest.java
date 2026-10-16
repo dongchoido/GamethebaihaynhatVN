@@ -37,9 +37,11 @@ public class EndGameSmokeTest {
                 JLabel message = (JLabel) field("messageLabel").get(frame);
                 require(message.getText().contains("B"), "Winner banner missing");
                 require(message.getToolTipText().contains("deck và trên tay"), "Reason missing");
-                require(!((JButton) field("opponentHeroButton").get(frame)).isEnabled(),
+                require(!((JButton) field("player2HeroButton").get(frame)).isEnabled(),
                         "Hero still clickable after game ends");
-                JPanel board = (JPanel) field("currentBoard").get(frame);
+                require(!((JButton) field("player1HeroButton").get(frame)).isEnabled(),
+                        "Player 1 hero still clickable after game ends");
+                JPanel board = (JPanel) field("player1Board").get(frame);
                 JButton minionButton = (JButton) board.getComponent(0);
                 require(!minionButton.isEnabled(), "Minion still clickable after game ends");
                 require(!((JButton) field("endTurnButton").get(frame)).isVisible(), "Turn button still visible");

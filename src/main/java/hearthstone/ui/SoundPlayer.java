@@ -6,7 +6,6 @@ import java.net.URL;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-/** Small, optional sound effects using only the JDK. Audio never blocks Swing. */
 public final class SoundPlayer {
     public enum Effect {
         START("Start"), SELECT("HeroSelect"), PLAY("Play"),
@@ -69,7 +68,6 @@ public final class SoundPlayer {
                 if (clip != null) {
                     clip.close();
                 }
-                // Missing audio devices or unsupported files must not interrupt a match.
             }
         });
     }

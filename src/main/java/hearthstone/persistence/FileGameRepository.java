@@ -16,7 +16,7 @@ public class FileGameRepository {
     private final Path matchesFile;
 
     public FileGameRepository() {
-        this(Path.of("data"));
+        this(Path.of(System.getProperty("hearthstone.dataDir", "data")));
     }
 
     public FileGameRepository(Path dataDirectory) {
